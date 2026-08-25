@@ -10,7 +10,8 @@ requires-python = ">=3.12"
 dependencies = [
     "pydantic (>=2.13.4,<3.0.0)",
     "dotenv (>=0.9.9,<0.10.0)",
-    "sqlalchemy (>=2.0.52,<3.0.0)"
+    "sqlalchemy (>=2.0.52,<3.0.0)",
+    "alembic (>=1.19.1,<2.0.0)"
 ]
 
 [tool.poetry]
