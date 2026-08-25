@@ -126,5 +126,22 @@ class ExampleTableBase(Base, metaclass=BaseMeta, model=ExampleTable):
     pass
 ```
 
+Convenience: payload validation via pydantic + using `Session`
+
+Example: add row
+
+```python
+
+@router.post("/add_data", response_model=MyResponseModel)
+def add_project_cost_data(
+    payload: ExampleTable, session: Session = Depends(get_db)
+) -> MyResponseModel:
+
+    db_row = ExampleTableBase(**payload.model_dump())
+    session.add(db_row)
+    session.commit()
+```
+
+
 -----
 *Made with [poetic](https://github.com/sagitta42/poetic)*
