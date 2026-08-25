@@ -1,1 +1,1 @@
-from pydantibase.core import *
+from pydantibase.table_model import TableModel as TableModel

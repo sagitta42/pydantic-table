@@ -11,5 +11,5 @@ def test_foo():
 
 
 def test_model(test_case_example):
-    logg.info("Example model")
-    test_case_example.display()
+    logg.debug("Example table")
+    logg.debug(test_case_example)
