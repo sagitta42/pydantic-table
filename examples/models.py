@@ -16,3 +16,7 @@ class ExampleTable(TableModel):
     id: int = Field(description="ID")
     name: str = Field(description="Name")
     value: float = Field(description="Value")
+
+
+class ExampleTableBase(Base, metaclass=BaseMeta, model=ExampleTable):
+    pass
