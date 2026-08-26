@@ -1,9 +1,18 @@
 import enum
-from typing import Self, Type
+from typing import Any, Self, Type
 
 from pydantic.fields import FieldInfo
 import sqlalchemy as sa
 from pydantic import BaseModel, Field, model_validator
+
+
+def nested_merge(first: dict, second: dict) -> dict:
+    for key, b_val in second.items():
+        if key in first and isinstance(first[key], dict) and isinstance(b_val, dict):
+            nested_merge(first[key], b_val)
+        else:
+            first[key] = b_val
+    return first
 
 
 class SaColumnType(enum.Enum):
@@ -20,8 +29,61 @@ class SaColumnType(enum.Enum):
         return cls[t.__name__]
 
 
-# TODO: metaclass for table name and primary keys
-class TableModel(BaseModel):
+class TableMeta(type(BaseModel)):
+    """
+    Metaclass for TableModel creation.
+
+    Takes care of fields hidden to user.
+    """
+
+    def __new__(
+        cls,
+        name: str,
+        bases: tuple[Type, ...],
+        namespace: dict[str, Any],
+        /,
+        table_name: str = "",
+        primary_keys: list[str] = [],
+        **kwds: Any,
+    ):
+        namespace.setdefault("__annotations__", {})
+
+        # TODO: enums
+        # TODO: can I do "_table_name" here?
+        nested_merge(
+            namespace,
+            cls._get_field_namespace_info("table_name_", table_name, "Table name"),
+        )
+        nested_merge(
+            namespace,
+            cls._get_field_namespace_info(
+                "primary_keys_", primary_keys, "Primary keys"
+            ),
+        )
+
+        return super().__new__(cls, name, bases, namespace, **kwds)
+
+    @classmethod
+    def _get_field_namespace_info(
+        cls, name: str, parameter: Any, description: str
+    ) -> dict:
+        """
+        Create information to add to namespace to create field.
+
+        parameter: parameter to be added - defines annotation and default value.
+        name: field name
+
+        The default value is crucial to set fixed table model parameters once during
+            child class definition (e.g. table name).
+        """
+        ret = {
+            "__annotations__": {name: type(parameter)},
+            name: Field(default=parameter, description=description, exclude=True),
+        }
+        return ret
+
+
+class TableModel(BaseModel, metaclass=TableMeta):
     """
     Table model.
 
@@ -32,11 +94,6 @@ class TableModel(BaseModel):
     The field table_name is reserved for table name and must have a default at definition.
     It is used by the class (table) to determine name without an instance (row) present.
     """
-
-    table_name_: str = Field(default="", description="Table name", exclude=True)
-    primary_keys_: list[str] = Field(
-        default=[], description="Primary keys", exclude=True
-    )
 
     @property
     def has_id_column(self) -> bool:
@@ -66,6 +123,7 @@ class TableModel(BaseModel):
         """
         Model fields that represent table columns
         """
+        # TODO: phase out; safe to simply model dump with metaclass
         ret = cls.model_fields.copy()
         for field_name, field_info in cls.model_fields.items():
             if field_info.exclude:
@@ -134,10 +192,10 @@ class TableModel(BaseModel):
         # TODO: implement executing call to add descriptions
         raise NotImplementedError
 
-    @model_validator(mode="after")
-    def check_name(self) -> Self:
-        # TODO: check that name is fixed Literal at model definition and is not provided in instances
-        # check that it has exclude=True / special method for column_dump()
+    @model_validator(mode="before")
+    def check_hidden(self) -> Self:
+        # TODO: check that hidden fields have not been given in input; raise error that they are reserved
+        # raise ValueError("Provide table_name in your TableModel class definition!")
         return self
 
     @model_validator(mode="before")
