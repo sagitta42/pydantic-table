@@ -2,6 +2,8 @@ from typing import Any, Type
 
 from pydantic import BaseModel, Field
 
+from pydantibase.table_model.internal_attr import InternalAttr
+
 
 def nested_merge(first: dict, second: dict) -> dict:
     for key, b_val in second.items():
@@ -35,20 +37,27 @@ class TableMeta(type(BaseModel)):
         # TODO: can I do "_table_name" here?
         nested_merge(
             namespace,
-            cls._get_field_namespace_info("table_name_", table_name, "Table name"),
+            cls._get_field_namespace_info(
+                InternalAttr.table_name, table_name, "Table name"
+            ),
         )
         nested_merge(
             namespace,
             cls._get_field_namespace_info(
-                "primary_keys_", primary_keys, "Primary keys"
+                InternalAttr.primary_keys, primary_keys, "Primary keys"
             ),
+        )
+
+        nested_merge(
+            namespace,
+            cls._get_field_namespace_info(InternalAttr.missing, [], "Missing columns"),
         )
 
         return super().__new__(cls, name, bases, namespace, **kwds)
 
     @classmethod
     def _get_field_namespace_info(
-        cls, name: str, parameter: Any, description: str
+        cls, name: InternalAttr, parameter: Any, description: str
     ) -> dict:
         """
         Create information to add to namespace to create field.
@@ -60,7 +69,7 @@ class TableMeta(type(BaseModel)):
             child class definition (e.g. table name).
         """
         ret = {
-            "__annotations__": {name: type(parameter)},
-            name: Field(default=parameter, description=description, exclude=True),
+            "__annotations__": {name.value: type(parameter)},
+            name.value: Field(default=parameter, description=description, exclude=True),
         }
         return ret

@@ -11,6 +11,7 @@ from pydantibase.table_model.model import TableModel
 
 def create_table(
     table_model: Type[TableModel],
+    columns: list[str],
     foreign_keys: dict[str, str] = {},
 ):
     """
@@ -22,8 +23,8 @@ def create_table(
 
     Column names must correspond to TableModel field names.
     """
-    columns = table_model.get_sa_columns(foreign_keys)
-    op.create_table(table_model.table_name(), *columns)
+    sa_columns = table_model.get_sa_columns(columns, foreign_keys)
+    op.create_table(table_model.table_name(), *sa_columns)
 
 
 def drop_table(table_model: Type[TableModel]):
@@ -43,17 +44,37 @@ def read_table(table: str | Type[TableModel]) -> sa.Table:
     return ret
 
 
+def add_column(table: Type[TableModel], name: str):
+    """
+    Add column
+    """
+    op.add_column(table.table_name(), table.get_sa_column(name))
+
+
+def drop_column(table: Type[TableModel], name: str):
+    op.drop_column(table.table_name(), name)
+
+
 def insert(input: TableModel | list[TableModel]):
     """
     Insert given row(s) to the table corresponding to its schema.
 
     Read table based on table name.
+    Filter out existing column from TableModel
+        to account for new columns in schema for past migration backwards compatibility.
     Invoke alembic execute() of table insert() with model dump.
     """
     rows = input if isinstance(input, list) else [input]
     for row in rows:
         table = read_table(row.table_name())
-        op.execute(table.insert().values(row.model_dump()))
+        for col in row.missing_columns:
+            if col in table.c:
+                raise ValueError(
+                    f"Row given for table {row.table_name()} is missing column {col}!"
+                )
+
+        values = {col: val for col, val in row.model_dump().items() if col in table.c}
+        op.execute(table.insert().values(values))
 
 
 def delete(input: TableModel | list[TableModel]):

@@ -5,6 +5,8 @@ from pydantic.fields import FieldInfo
 import sqlalchemy as sa
 from pydantic import BaseModel, model_validator
 
+from pydantibase.logger import logg
+from pydantibase.table_model.internal_attr import InternalAttr
 from pydantibase.table_model.meta import TableMeta
 
 
@@ -42,6 +44,11 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = "id" in self.__class__.model_fields
         return ret
 
+    @property
+    def missing_columns(self) -> list[str]:
+        ret = self.__dict__[InternalAttr.missing.value]
+        return ret
+
     @classmethod
     def table_name(cls) -> str:
         """
@@ -49,12 +56,12 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
         Is defined as (obligatory) default value of table name column.
         """
-        ret = cls.model_fields["table_name_"].default
+        ret = cls.model_fields[InternalAttr.table_name.value].default
         return ret
 
     @classmethod
     def primary_keys(cls) -> list[str]:
-        ret = cls.model_fields["primary_keys_"].default
+        ret = cls.model_fields[InternalAttr.primary_keys.value].default
         return ret
 
     @classmethod
@@ -62,7 +69,6 @@ class TableModel(BaseModel, metaclass=TableMeta):
         """
         Model fields that represent table columns
         """
-        # TODO: phase out; safe to simply model dump with metaclass
         ret = cls.model_fields.copy()
         for field_name, field_info in cls.model_fields.items():
             if field_info.exclude:
@@ -78,38 +84,43 @@ class TableModel(BaseModel, metaclass=TableMeta):
         return ret
 
     @classmethod
-    def get_sa_columns(cls, foreign_keys: dict[str, str]) -> list[sa.Column]:
+    def get_sa_column(cls, name: str, foreign_key_col: str | None = None):
+        foreign_key_args = []
+        if foreign_key_col is not None:
+            foreign_key = sa.ForeignKey(
+                name=f"fk_{foreign_key_col.replace('.', '_')}",
+                column=foreign_key_col,
+            )
+            foreign_key_args.append(foreign_key)
+
+        col = sa.Column(
+            name,
+            cls._get_field_sa_type(name),
+            # TODO: controllable nullability
+            nullable=False,
+            primary_key=name in cls.primary_keys(),
+            *foreign_key_args,
+        )
+        return col
+
+    @classmethod
+    def get_sa_columns(
+        cls, columns: list[str] | None, foreign_keys: dict[str, str] = {}
+    ) -> list[sa.Column]:
         """
         Create sa.Column instances based on model fields.
 
-        primary_keys (list[str]): list of primary key column names
+        # TODO: metaclass
         foreign_keys (dict[str, str]): dictionary mapping {column name: foreign key column information}
             Format of foreign key is foreign_table.column
 
         Column names must correspond to TableModel field names.
         """
-        # TODO: validation columns in primary/foreign keys error if do not exist at all
-        ret = []
-        for field_name in cls.column_fields():
-            foreign_key_col = foreign_keys.get(field_name, None)
-            foreign_key_args = []
-
-            if foreign_key_col is not None:
-                foreign_key = sa.ForeignKey(
-                    name=f"fk_{foreign_key_col.replace('.', '_')}",
-                    column=foreign_key_col,
-                )
-                foreign_key_args.append(foreign_key)
-
-            col = sa.Column(
-                field_name,
-                cls._get_field_sa_type(field_name),
-                # TODO: controllable nullability
-                nullable=False,
-                primary_key=field_name in cls.primary_keys(),
-                *foreign_key_args,
-            )
-            ret.append(col)
+        column_list = columns or cls.column_fields().keys()
+        ret = [
+            cls.get_sa_column(field_name, foreign_keys.get(field_name, None))
+            for field_name in column_list
+        ]
 
         return ret
 
@@ -141,3 +152,37 @@ class TableModel(BaseModel, metaclass=TableMeta):
     def check_field_info(self) -> Self:
         # TODO: mode-before model validator that all fields have a description and annotation
         return self
+
+    @model_validator(mode="before")
+    def catch_missing(cls, values):
+        """
+        Catch missing columns and set dummy values.
+        Register missing columns to be ignored in column dump.
+        """
+        ret = values.copy()
+        ret[InternalAttr.missing.value] = []
+
+        # TODO: set private attributes
+        #  cls.__dict__.keys()
+        # dict_keys(
+        #     [
+        #         "__private_attributes__",
+        #         "__pydantic_fields__",
+        #         "__pydantic_core_schema__",
+        #     ]
+        # )
+        fields = cls.__dict__["__pydantic_fields__"]
+        field_names = fields.keys()
+
+        for name in field_names:
+            if name in InternalAttr.values():
+                continue
+
+            if name not in values:
+                logg.debug(f"{name} column not in given values")
+                dummy = fields[name].annotation()
+                ret[name] = dummy
+                ret[InternalAttr.missing.value].append(name)
+
+        logg.debug(ret)
+        return ret
