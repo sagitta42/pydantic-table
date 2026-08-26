@@ -11,7 +11,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-from pydantibase.alembdantic import opd
+from pydantibase.alembic import opd
 from models import ExampleTable
 
 # revision identifiers, used by Alembic.

@@ -1,7 +1,7 @@
 from pydantic import Field
 
 from pydantibase import TableModel
-from pydantibase.sqlalchemic import BaseMeta, Base
+from pydantibase.sqlalchemy import BaseMeta, Base
 
 
 class ExampleTable(TableModel, table_name="examples", primary_keys=["id"]):
