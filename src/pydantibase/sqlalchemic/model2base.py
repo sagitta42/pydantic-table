@@ -5,7 +5,7 @@ from sqlalchemy import Float, Integer, String
 from sqlalchemy.orm import DeclarativeBase, mapped_column
 from sqlalchemy.orm.decl_api import DeclarativeAttributeIntercept
 
-from pydantibase.table_model import TableModel
+from pydantibase.table_model.model import TableModel
 
 
 class BaseFieldType(enum.Enum):

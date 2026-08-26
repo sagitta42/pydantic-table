@@ -6,7 +6,7 @@ from alembic import op
 import sqlalchemy as sa
 from typing import Any, Type
 
-from pydantibase.table_model import TableModel
+from pydantibase.table_model.model import TableModel
 
 
 def create_table(
