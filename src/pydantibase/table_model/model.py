@@ -50,6 +50,11 @@ class TableModel(BaseModel, metaclass=TableMeta):
         return ret
 
     @classmethod
+    def table_info(cls) -> str:
+        ret = f"{cls} ({cls.table_name()})"
+        return ret
+
+    @classmethod
     def table_name(cls) -> str:
         """
         Table name.
