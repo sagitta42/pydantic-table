@@ -11,7 +11,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-from pydantibase.alembic import opd
+from pydantibase.alembic import op as opp
 from models import ExampleTable
 
 # revision identifiers, used by Alembic.
@@ -25,10 +25,10 @@ data = ExampleTable(id=42, name="Alice", value=2.718)
 
 def upgrade() -> None:
     """Upgrade schema."""
-    opd.create_table(ExampleTable)
-    opd.insert(data)
+    opp.create_table(ExampleTable)
+    opp.insert(data)
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    opd.drop_table(ExampleTable)
+    opp.drop_table(ExampleTable)
