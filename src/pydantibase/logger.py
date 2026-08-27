@@ -132,5 +132,5 @@ class Logger:
 
 # NOTE: dotenv_values() in some cases yielded empty .env for unexplained reason
 env_config = dotenv_values(Path.cwd() / ".env")
-is_debug = env_config.get("DEBUG", "").lower() in ("true", "1")
+is_debug = env_config.get("DEBUG_PYDANTIC_TABLE", "").lower() in ("true", "1")
 logg = Logger(log_level=logging.DEBUG if is_debug else logging.INFO)

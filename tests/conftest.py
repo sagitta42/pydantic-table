@@ -10,7 +10,6 @@ from examples.models import ExampleTable
 
 env_config = dotenv_values()
 is_debug = env_config.get("DEBUG", "").lower() in ("true", "1")
-test_eann = env_config.get("TEST_EANN", "").lower() in ("true", "1")
 
 if is_debug:
     path_current = os.path.dirname(__file__)
