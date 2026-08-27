@@ -33,8 +33,15 @@ class TableMeta(type(BaseModel)):
     ):
         namespace.setdefault("__annotations__", {})
 
-        # TODO: enums
-        # TODO: can I do "_table_name" here?
+        # TODO: figure out if better to use private attributes and how
+        #  cls.__dict__.keys()
+        # dict_keys(
+        #     [
+        #         "__private_attributes__",
+        #         "__pydantic_fields__",
+        #         "__pydantic_core_schema__",
+        #     ]
+        # )        
         nested_merge(
             namespace,
             cls._get_field_namespace_info(
@@ -70,6 +77,6 @@ class TableMeta(type(BaseModel)):
         """
         ret = {
             "__annotations__": {name.value: type(parameter)},
-            name.value: Field(default=parameter, description=description, exclude=True),
+            name: Field(default=parameter, description=description, exclude=True),
         }
         return ret

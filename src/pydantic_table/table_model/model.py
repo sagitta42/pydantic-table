@@ -46,7 +46,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
     @property
     def missing_columns(self) -> list[str]:
-        ret = self.__dict__[InternalAttr.missing.value]
+        ret = self.__dict__[InternalAttr.missing]
         return ret
 
     @classmethod
@@ -61,12 +61,12 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
         Is defined as (obligatory) default value of table name column.
         """
-        ret = cls.model_fields[InternalAttr.table_name.value].default
+        ret = cls.model_fields[InternalAttr.table_name].default
         return ret
 
     @classmethod
     def primary_keys(cls) -> list[str]:
-        ret = cls.model_fields[InternalAttr.primary_keys.value].default
+        ret = cls.model_fields[InternalAttr.primary_keys].default
         return ret
 
     @classmethod
@@ -165,17 +165,8 @@ class TableModel(BaseModel, metaclass=TableMeta):
         Register missing columns to be ignored in column dump.
         """
         ret = values.copy()
-        ret[InternalAttr.missing.value] = []
+        ret[InternalAttr.missing] = []
 
-        # TODO: set private attributes
-        #  cls.__dict__.keys()
-        # dict_keys(
-        #     [
-        #         "__private_attributes__",
-        #         "__pydantic_fields__",
-        #         "__pydantic_core_schema__",
-        #     ]
-        # )
         fields = cls.__dict__["__pydantic_fields__"]
         field_names = fields.keys()
 
@@ -187,7 +178,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
                 logg.debug(f"{name} column not in given values")
                 dummy = fields[name].annotation()
                 ret[name] = dummy
-                ret[InternalAttr.missing.value].append(name)
+                ret[InternalAttr.missing].append(name)
 
         logg.debug(ret)
         return ret
