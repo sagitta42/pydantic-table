@@ -2,7 +2,7 @@ from typing import Any, Type
 
 from pydantic import BaseModel, Field
 
-from pydantic_table.table_model.internal_attr import InternalAttr
+from pydantic_table.table_model.internal_attr import AttrDescription, InternalAttr
 
 
 def nested_merge(first: dict, second: dict) -> dict:
@@ -41,30 +41,24 @@ class TableMeta(type(BaseModel)):
         #         "__pydantic_fields__",
         #         "__pydantic_core_schema__",
         #     ]
-        # )        
+        # )
         nested_merge(
             namespace,
-            cls._get_field_namespace_info(
-                InternalAttr.table_name, table_name, "Table name"
-            ),
+            cls._get_field_namespace_info(InternalAttr.table_name, table_name),
         )
         nested_merge(
             namespace,
-            cls._get_field_namespace_info(
-                InternalAttr.primary_keys, primary_keys, "Primary keys"
-            ),
+            cls._get_field_namespace_info(InternalAttr.primary_keys, primary_keys),
         )
 
-        nested_merge(
-            namespace,
-            cls._get_field_namespace_info(InternalAttr.missing, [], "Missing columns"),
-        )
+        for field in [InternalAttr.missing, InternalAttr.extra]:
+            nested_merge(namespace, cls._get_field_namespace_info(field, []))
 
         return super().__new__(cls, name, bases, namespace, **kwds)
 
     @classmethod
     def _get_field_namespace_info(
-        cls, name: InternalAttr, parameter: Any, description: str
+        cls, field_name: InternalAttr, parameter: Any
     ) -> dict:
         """
         Create information to add to namespace to create field.
@@ -76,7 +70,11 @@ class TableMeta(type(BaseModel)):
             child class definition (e.g. table name).
         """
         ret = {
-            "__annotations__": {name.value: type(parameter)},
-            name: Field(default=parameter, description=description, exclude=True),
+            "__annotations__": {field_name.value: type(parameter)},
+            field_name: Field(
+                default=parameter,
+                description=AttrDescription.from_attr(field_name),
+                exclude=True,
+            ),
         }
         return ret
