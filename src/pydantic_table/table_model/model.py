@@ -98,11 +98,13 @@ class TableModel(BaseModel, metaclass=TableMeta):
             )
             foreign_key_args.append(foreign_key)
 
+        field_info = cls.column_fields()[name]
         col = sa.Column(
             name,
             cls._get_field_sa_type(name),
             # TODO: controllable nullability
             nullable=False,
+            default=field_info.default,
             primary_key=name in cls.primary_keys(),
             *foreign_key_args,
         )
