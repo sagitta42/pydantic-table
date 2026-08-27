@@ -2,7 +2,7 @@ from typing import Any, Type
 
 from pydantic import BaseModel, Field
 
-from pydantibase.table_model.internal_attr import InternalAttr
+from pydantic_table.table_model.internal_attr import InternalAttr
 
 
 def nested_merge(first: dict, second: dict) -> dict:

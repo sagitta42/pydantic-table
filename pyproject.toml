@@ -1,32 +1,32 @@
 [project]
-name = "pydantibase"
-version = "0.1.0"
-description = ""
 authors = [
-    {name = "mariia",email = "mariia.redchuk@iconservizi.com"}
+  {name = "mariia", email = "mariia.redchuk@iconservizi.com"},
 ]
+dependencies = [
+  "pydantic (>=2.13.4,<3.0.0)",
+  "dotenv (>=0.9.9,<0.10.0)",
+  "sqlalchemy (>=2.0.52,<3.0.0)",
+  "alembic (>=1.19.1,<2.0.0)",
+]
+description = ""
+name = "pydantic-table"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "pydantic (>=2.13.4,<3.0.0)",
-    "dotenv (>=0.9.9,<0.10.0)",
-    "sqlalchemy (>=2.0.52,<3.0.0)",
-    "alembic (>=1.19.1,<2.0.0)"
-]
+version = "0.1.0"
 
 [tool.poetry]
-packages = [{include = "pydantibase", from = "src"}]
+packages = [{include = "pydantic_table", from = "src"}]
 
 [tool.poetic]
-type = "package"
-settings = false
 progressbar = false
+settings = false
+type = "package"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 
 [dependency-groups]
 dev = [
-    "pytest (>=9.1.1,<10.0.0)"
+  "pytest (>=9.1.1,<10.0.0)",
 ]

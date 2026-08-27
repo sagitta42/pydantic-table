@@ -6,8 +6,8 @@ from alembic import op
 import sqlalchemy as sa
 from typing import Any, Type
 
-from pydantibase.exceptions import PydantibaseAlembicException
-from pydantibase.table_model.model import TableModel
+from pydantic_table.exceptions import PydanticTalbeAlembicException
+from pydantic_table.table_model.model import TableModel
 
 
 def create_table(
@@ -50,7 +50,7 @@ def add_column(table: Type[TableModel], name: str):
     Add column
     """
     if name not in table.column_fields():
-        raise PydantibaseAlembicException(
+        raise PydanticTalbeAlembicException(
             f"Column {name} not present in {table.table_info()}! Cannot add."
         )
 
@@ -75,7 +75,7 @@ def insert(input: TableModel | list[TableModel]):
         table = read_table(row.table_name())
         for col in row.missing_columns:
             if col in table.c:
-                raise PydantibaseAlembicException(
+                raise PydanticTalbeAlembicException(
                     f"Row given for table {row.table_name()} is missing column {col}!"
                 )
 

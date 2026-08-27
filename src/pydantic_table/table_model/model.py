@@ -5,9 +5,9 @@ from pydantic.fields import FieldInfo
 import sqlalchemy as sa
 from pydantic import BaseModel, model_validator
 
-from pydantibase.logger import logg
-from pydantibase.table_model.internal_attr import InternalAttr
-from pydantibase.table_model.meta import TableMeta
+from pydantic_table.logger import logg
+from pydantic_table.table_model.internal_attr import InternalAttr
+from pydantic_table.table_model.meta import TableMeta
 
 
 class SaColumnType(enum.Enum):

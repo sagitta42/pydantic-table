@@ -1,4 +1,4 @@
-from pydantibase.logger import logg
+from pydantic_table.logger import logg
 
 
 def test_model(test_case_example):

@@ -5,7 +5,7 @@ from sqlalchemy import Float, Integer, String
 from sqlalchemy.orm import DeclarativeBase, mapped_column
 from sqlalchemy.orm.decl_api import DeclarativeAttributeIntercept
 
-from pydantibase.table_model.model import TableModel
+from pydantic_table.table_model.model import TableModel
 
 
 class BaseFieldType(enum.Enum):
@@ -20,7 +20,7 @@ class BaseFieldType(enum.Enum):
 
 class BaseMeta(DeclarativeAttributeIntercept):
     """
-    Adaptor Metaclass for creating DeclarativeBase based on pydantibase TableModel.
+    Adaptor Metaclass for creating DeclarativeBase based on pydantic-table TableModel.
 
     Translates TableModel field:
         - table_name_ --> __tablename__
@@ -54,6 +54,7 @@ class BaseMeta(DeclarativeAttributeIntercept):
         x = super().__new__(cls, name, bases, namespace, **kwds)
 
         return x
+
 
 class Base(DeclarativeBase):
     pass
