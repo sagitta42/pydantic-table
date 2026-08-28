@@ -47,7 +47,7 @@ def add_column(table: Type[TableModel], name: str, foreign_key: str | None = Non
     """
     if name not in table.column_fields():
         raise PydanticTalbeAlembicException(
-            f"Column {name} not present in {table.table_info()}! Cannot add."
+            f"Column {name} not present in table {table.table_info()}! Cannot add."
         )
 
     op.add_column(table.table_name(), sap.Column(name, table, foreign_key=foreign_key))

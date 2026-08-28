@@ -73,7 +73,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
     @classmethod
     def table_info(cls) -> str:
-        ret = f"{cls} ({cls.table_name()})"
+        ret = f"'{cls.table_name()}' ({cls.__name__})"
         return ret
 
     @classmethod
