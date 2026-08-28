@@ -44,7 +44,11 @@ def Column(
         foreign_key_args.append(sa_foreign_key)
 
     column_info = table_model.column(name)
-    default = column_info.default if column_info.default is not None else None
+    default = (
+        None
+        if column_info.is_required() or column_info.default is None
+        else column_info.default
+    )
 
     ret = sa.Column(
         name,
