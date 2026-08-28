@@ -1,13 +1,13 @@
-import enum
 from typing import TYPE_CHECKING, Any, ClassVar, Self, Type
 
-import sqlalchemy as sa
 from pydantic import BaseModel, model_validator
 
 from pydantic_table.logger import logg
+from pydantic_table.table_model.exceptions import PydanticTableColumnError
 from pydantic_table.table_model.field import ColumnFieldInfo
 from pydantic_table.table_model.internal_attr import InternalAttr
 from pydantic_table.table_model.meta import TableMeta
+from pydantic_table.utils import list_as_str
 
 
 class TableModel(BaseModel, metaclass=TableMeta):
@@ -29,14 +29,19 @@ class TableModel(BaseModel, metaclass=TableMeta):
     def table(self) -> Type[Self]:
         return self.__class__
 
-    @classmethod
-    def table_name(cls) -> str:
+    def get(self, column: str) -> Any:
         """
-        Table name.
+        Get value of column.
 
-        Is defined as (obligatory) default value of table name column.
+        Looks among existing and extra columns to recover the value.
         """
-        ret = cls.model_fields[InternalAttr.table_name].default
+        if column not in self.real_data:
+            raise PydanticTableColumnError(
+                f"Column {column} does not exist in {self.table_info}!"
+                f"Schema columns: {list_as_str(self.data.keys())}"
+                f"Extra columns: {list_as_str(self.extra_data.keys())}"
+            )
+        ret = self.real_data[column]
         return ret
 
     @property
@@ -45,8 +50,30 @@ class TableModel(BaseModel, metaclass=TableMeta):
         return ret
 
     @property
-    def extra_columns(self) -> dict[str, Any]:
+    def data(self) -> dict[str, Any]:
+        return self.model_dump()
+
+    @property
+    def extra_data(self) -> dict[str, Any]:
         ret = self.__dict__[InternalAttr.extra]
+        return ret
+
+    @property
+    def real_data(self) -> dict[str, Any]:
+        """
+        Actual data stored in row including extra columns.
+        """
+        ret = self.model_dump() | self.extra_data
+        return ret
+
+    @classmethod
+    def table_name(cls) -> str:
+        """
+        Table name.
+
+        Is defined as (obligatory) default value of table name column.
+        """
+        ret = cls.model_fields[InternalAttr.table_name].default
         return ret
 
     @classmethod
