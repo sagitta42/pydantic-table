@@ -108,13 +108,17 @@ class TableModel(BaseModel, metaclass=TableMeta):
             foreign_key_args.append(foreign_key)
 
         column = cls.column(name)
+
+        # TODO: separate default from nullability
+        default = (
+            None if column.is_required() or column.default is None else column.default
+        )
         ret = sa.Column(
             name,
             cls._get_field_sa_type(name),
-            # TODO: controllable nullability
-            nullable=False,
-            default=column.default,
-            server_default=column.default,
+            nullable=default is not None,
+            default=default,
+            server_default=default,
             primary_key=name in cls.primary_keys(),
             *foreign_key_args,
         )
