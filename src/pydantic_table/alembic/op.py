@@ -66,21 +66,39 @@ def insert(input: TableModel | list[TableModel]):
     Insert given row(s) to the table corresponding to its schema.
 
     Read table based on table name.
-    Filter out existing column from TableModel
-        to account for new columns in schema for past migration backwards compatibility.
     Invoke alembic execute() of table insert() with model dump.
+
+    Account for backwards compatibility with added columns or dropped columns.
+
+    Check existing columns in input that were not given (missing columns):
+        - if not present in table, ignore (past/future schema change dropped/added this column)
+        - if present in table, raise error (must be given but was not)
+
+    Ignore columns that are not present in table.
+
+    Check hidden extra columns in input (extra columns):
+        - if present in table, include (past/future schema change added/dropped this column)
+        - if not present in table, raise error (non-existing columns were given)
     """
     rows = input if isinstance(input, list) else [input]
     for row in rows:
         table = read_table(row.table_name())
-        for col in row.missing_columns:
-            if col in table.c:
+        for col_name in row.missing_columns:
+            if col_name in table.c:
                 raise PydanticTalbeAlembicException(
-                    f"Row given for table {row.table_name()} is missing column {col}!"
+                    f"Row given for table {row.table_name()} is missing column {col_name}!"
                 )
 
-        values = {col: val for col, val in row.model_dump().items() if col in table.c}
-        op.execute(table.insert().values(values))
+        data = {col: val for col, val in row.model_dump().items() if col in table.c}
+
+        for col_name, col_value in row.extra_columns.items():
+            if col_name not in table.c:
+                raise PydanticTalbeAlembicException(
+                    f"Row given for table {row.table_name()} has extra column {col_name}!"
+                )
+            data[col_name] = col_value
+
+        op.execute(table.insert().values(data))
 
 
 def delete(input: TableModel | list[TableModel]):
@@ -106,17 +124,3 @@ def delete_by(table: Type[TableModel], column: str, value: Any):
     """
     tb = read_table(table.table_name())
     op.execute(tb.delete().where(tb.c[column] == value))
-
-
-def delete_row_by_id(row: TableModel):
-    """
-    Delete given row from the table it corresponds to based on ID.
-
-    Applies only to tables that have an ID column.
-    """
-    if not row.has_id_column:
-        raise ValueError(
-            f"Table {row.table_name()} does not have an id column! Cannot delete row by ID"
-        )
-    table = read_table(row.table_name())
-    op.execute(table.delete().where(table.c.id == row.id))

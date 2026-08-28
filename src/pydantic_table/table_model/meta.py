@@ -21,6 +21,7 @@ class TableMeta(type(BaseModel)):
     Metaclass for TableModel creation.
 
     Takes care of fields hidden to user.
+    Requires model fields to be defined via ColumnField rather than standard Field.
     """
 
     def __new__(
@@ -43,13 +44,9 @@ class TableMeta(type(BaseModel)):
         #         "__pydantic_core_schema__",
         #     ]
         # )
-        nested_merge(
-            namespace,
-            mcs._get_field_namespace_info(InternalAttr.table_name, table_name),
-        )
-
-        for field in [InternalAttr.missing, InternalAttr.extra]:
-            nested_merge(namespace, mcs._get_field_namespace_info(field, []))
+        mcs._add_field_namespace_info(namespace, InternalAttr.table_name, table_name)
+        mcs._add_field_namespace_info(namespace, InternalAttr.missing, [])
+        mcs._add_field_namespace_info(namespace, InternalAttr.extra, {})
 
         cls = super().__new__(mcs, name, bases, namespace, **kwds)
 
@@ -59,10 +56,16 @@ class TableMeta(type(BaseModel)):
 
             if not isinstance(field_info, ColumnFieldInfo):
                 raise PydanticTableTypeError(
-                    f"{cls.__name__}.{field_name!r} must be declared with {ColumnFieldInfo.__name__}(...), "
+                    f"{cls.__name__}.{field_name} must be declared with {ColumnFieldInfo.__name__}(...), "
                     f"not Field() or a bare default (got {type(field_info).__name__})"
                 )
         return cls
+
+    @classmethod
+    def _add_field_namespace_info(
+        mcs, namespace: dict, field_name: InternalAttr, parameter: Any
+    ):
+        nested_merge(namespace, mcs._get_field_namespace_info(field_name, parameter))
 
     @classmethod
     def _get_field_namespace_info(

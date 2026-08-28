@@ -1,5 +1,5 @@
 import enum
-from typing import TYPE_CHECKING, ClassVar, Self, Type
+from typing import TYPE_CHECKING, Any, ClassVar, Self, Type
 
 import sqlalchemy as sa
 from pydantic import BaseModel, model_validator
@@ -39,24 +39,6 @@ class TableModel(BaseModel, metaclass=TableMeta):
     if TYPE_CHECKING:
         model_fields: ClassVar[dict[str, ColumnFieldInfo]]
 
-    @property
-    def has_id_column(self) -> bool:
-        """
-        Whether the table/row has an ID column
-        """
-        ret = "id" in self.__class__.model_fields
-        return ret
-
-    @property
-    def missing_columns(self) -> list[str]:
-        ret = self.__dict__[InternalAttr.missing]
-        return ret
-
-    @classmethod
-    def table_info(cls) -> str:
-        ret = f"{cls} ({cls.table_name()})"
-        return ret
-
     @classmethod
     def table_name(cls) -> str:
         """
@@ -65,6 +47,21 @@ class TableModel(BaseModel, metaclass=TableMeta):
         Is defined as (obligatory) default value of table name column.
         """
         ret = cls.model_fields[InternalAttr.table_name].default
+        return ret
+
+    @property
+    def missing_columns(self) -> list[str]:
+        ret = self.__dict__[InternalAttr.missing]
+        return ret
+
+    @property
+    def extra_columns(self) -> dict[str, Any]:
+        ret = self.__dict__[InternalAttr.extra]
+        return ret
+
+    @classmethod
+    def table_info(cls) -> str:
+        ret = f"{cls} ({cls.table_name()})"
         return ret
 
     @classmethod
@@ -165,19 +162,19 @@ class TableModel(BaseModel, metaclass=TableMeta):
         return self
 
     @model_validator(mode="before")
-    def catch_missing(cls, values):
+    def catch_missing(cls, data):
         """
         Catch missing columns and set dummy values.
         Register missing columns to be ignored in column dump.
         """
-        ret = values.copy()
+        ret = data.copy()
         ret[InternalAttr.missing] = []
 
         columns = cls.columns()
 
         for column_name, column_info in columns.items():
-            if column_name not in values:
-                logg.debug(f"{column_name} column not in given values")
+            if column_name not in data:
+                logg.debug(f"{column_name} column not in given data")
                 assert column_info.annotation is not None
                 dummy = column_info.annotation()
                 ret[column_name] = dummy
@@ -187,10 +184,19 @@ class TableModel(BaseModel, metaclass=TableMeta):
         return ret
 
     @model_validator(mode="before")
-    def catch_extra(cls, values):
+    def catch_extra(cls, data):
         """
         Catch extra columns and store their values.
-        Register extra columns to be used at insert when needed.
+        Register extra column values to be used at insert when needed.
         """
-        # TODO:
-        return values
+        ret = data.copy()
+        ret[InternalAttr.extra] = {}
+
+        columns = cls.columns()
+
+        for column_name, column_value in data.items():
+            if not column_name in columns:
+                logg.debug(f"{column_name} column not table schema")
+                ret[InternalAttr.extra][column_name] = column_value
+
+        return data
