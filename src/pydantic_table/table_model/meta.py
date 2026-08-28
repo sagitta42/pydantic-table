@@ -2,7 +2,7 @@ from typing import Any, Type
 
 from pydantic import BaseModel, Field
 
-from pydantic_table.exceptions import PydanticTableTypeError
+from pydantic_table.table_model.exceptions import PydanticTableTypeError
 from pydantic_table.table_model.field import ColumnFieldInfo
 from pydantic_table.table_model.internal_attr import AttrDescription, InternalAttr
 

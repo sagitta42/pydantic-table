@@ -2,8 +2,8 @@ import json
 
 from pydantic import Field
 
-from pydantic_table.exceptions import PydanticTableTypeError
 from pydantic_table.logger import logg
+from pydantic_table.table_model.exceptions import PydanticTableTypeError
 from pydantic_table.table_model.field import ColumnField
 from pydantic_table.table_model.model import TableModel
 from tests.conftest import PATH_TO_CONFIGS

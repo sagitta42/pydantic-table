@@ -1,0 +1,2 @@
+class PydanticTalbeAlembicException(Exception):
+    pass

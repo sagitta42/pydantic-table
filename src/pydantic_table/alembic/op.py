@@ -6,9 +6,9 @@ from alembic import op
 import sqlalchemy as sa
 from typing import Any, Type
 
+from pydantic_table.alembic.exceptions import PydanticTalbeAlembicException
 import pydantic_table.sqlalchemy as sap
 
-from pydantic_table.exceptions import PydanticTalbeAlembicException
 from pydantic_table.table_model.model import TableModel
 
 
