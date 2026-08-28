@@ -55,7 +55,3 @@ class BaseMeta(DeclarativeAttributeIntercept):
         x = super().__new__(cls, name, bases, namespace, **kwds)
 
         return x
-
-
-class Base(DeclarativeBase):
-    pass
