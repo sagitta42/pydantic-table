@@ -1,11 +1,11 @@
 import enum
-from typing import Self, Type
+from typing import TYPE_CHECKING, ClassVar, Self, Type
 
-from pydantic.fields import FieldInfo
 import sqlalchemy as sa
 from pydantic import BaseModel, model_validator
 
 from pydantic_table.logger import logg
+from pydantic_table.table_model.field import ColumnFieldInfo
 from pydantic_table.table_model.internal_attr import InternalAttr
 from pydantic_table.table_model.meta import TableMeta
 
@@ -35,6 +35,9 @@ class TableModel(BaseModel, metaclass=TableMeta):
     The field table_name is reserved for table name and must have a default at definition.
     It is used by the class (table) to determine name without an instance (row) present.
     """
+
+    if TYPE_CHECKING:
+        model_fields: ClassVar[dict[str, ColumnFieldInfo]]
 
     @property
     def has_id_column(self) -> bool:
@@ -66,11 +69,15 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
     @classmethod
     def primary_keys(cls) -> list[str]:
-        ret = cls.model_fields[InternalAttr.primary_keys].default
+        ret = [
+            column
+            for column, column_info in cls.columns().items()
+            if column_info.primary_key
+        ]
         return ret
 
     @classmethod
-    def columns(cls) -> dict[str, FieldInfo]:
+    def columns(cls) -> dict[str, ColumnFieldInfo]:
         """
         Model fields that represent table columns
         """
@@ -83,16 +90,8 @@ class TableModel(BaseModel, metaclass=TableMeta):
         return ret
 
     @classmethod
-    def column(cls, name: str) -> FieldInfo:
+    def column(cls, name: str) -> ColumnFieldInfo:
         return cls.columns()[name]
-
-    @classmethod
-    def is_primary(cls, column: str) -> bool:
-        """
-        Is column a primary key.
-        """
-        ret = column in cls.primary_keys()
-        return ret
 
     @classmethod
     def sa_column(cls, name: str, foreign_key_col: str | None = None) -> sa.Column:
@@ -119,8 +118,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
             nullable=default is not None,
             default=default,
             server_default=default,
-            primary_key=name in cls.primary_keys(),
-            *foreign_key_args,
+            primary_key=column.primary_key,
         )
         return ret
 
@@ -198,3 +196,12 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
         logg.debug(ret)
         return ret
+
+    @model_validator(mode="before")
+    def catch_extra(cls, values):
+        """
+        Catch extra columns and store their values.
+        Register extra columns to be used at insert when needed.
+        """
+        # TODO:
+        return values

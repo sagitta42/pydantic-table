@@ -12,7 +12,7 @@ from tests.conftest import PATH_TO_CONFIGS
 def test_model():
     filename = "test_model"
 
-    class ExampleTable(TableModel, table_name="examples", primary_keys=["id"]):
+    class ExampleTable(TableModel, table_name="examples"):
         id: int = ColumnField(description="ID", primary_key=True)
         name: str = ColumnField(description="Name")
         value: float = ColumnField(description="Value")
@@ -28,7 +28,7 @@ def test_model():
 def test_bad_model():
     try:
 
-        class ExampleTable(TableModel, table_name="examples", primary_keys=["id"]):
+        class ExampleTable(TableModel, table_name="examples"):
             id: int = ColumnField(description="ID", primary_key=True)
             name: str = Field(description="Name")  # not allowed
             value: float = ColumnField(description="Value")

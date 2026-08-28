@@ -3,7 +3,6 @@ import enum
 
 class InternalAttr(str, enum.Enum):
     table_name = "table_name__"
-    primary_keys = "primary_keys__"
     missing = "missing_columns__"
     extra = "extra_columns__"
 
@@ -14,7 +13,6 @@ class InternalAttr(str, enum.Enum):
 
 class AttrDescription(str, enum.Enum):
     table_name = "Table name"
-    primary_keys = "Primary keys"
     missing = "Missing columns"
     extra = "Extra columns"
 

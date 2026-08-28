@@ -30,7 +30,6 @@ class TableMeta(type(BaseModel)):
         namespace: dict[str, Any],
         /,
         table_name: str = "",
-        primary_keys: list[str] = [],
         **kwds: Any,
     ):
         namespace.setdefault("__annotations__", {})
@@ -47,10 +46,6 @@ class TableMeta(type(BaseModel)):
         nested_merge(
             namespace,
             mcs._get_field_namespace_info(InternalAttr.table_name, table_name),
-        )
-        nested_merge(
-            namespace,
-            mcs._get_field_namespace_info(InternalAttr.primary_keys, primary_keys),
         )
 
         for field in [InternalAttr.missing, InternalAttr.extra]:

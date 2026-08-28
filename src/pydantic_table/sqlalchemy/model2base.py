@@ -39,16 +39,16 @@ class BaseMeta(DeclarativeAttributeIntercept):
     ):
         namespace["__tablename__"] = model.table_name()
 
-        for column_name, field_info in model.columns().items():
-            if field_info.annotation is None:
+        for column_name, column_info in model.columns().items():
+            if column_info.annotation is None:
                 raise ValueError(
-                    f"pydantic model fields must be annotated for pydantic2base adaptor!\n{field_info}"
+                    f"pydantic model fields must be annotated for pydantic2base adaptor!\n{column_info}"
                 )
 
             namespace[column_name] = mapped_column(
-                BaseFieldType.from_type(field_info.annotation),
-                nullable=field_info.default is None,
-                primary_key=model.is_primary(column_name),
+                BaseFieldType.from_type(column_info.annotation),
+                nullable=column_info.default is None,
+                primary_key=column_info.primary_key,
             )
 
         x = super().__new__(cls, name, bases, namespace, **kwds)
