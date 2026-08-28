@@ -1,5 +1,8 @@
 import json
 
+from pydantic import Field
+
+from pydantic_table.exceptions import PydanticTableTypeError
 from pydantic_table.logger import logg
 from pydantic_table.table_model.field import ColumnField
 from pydantic_table.table_model.model import TableModel
@@ -20,3 +23,15 @@ def test_model():
 
     logg.debug("Example table")
     logg.debug(model)
+
+
+def test_bad_model():
+    try:
+
+        class ExampleTable(TableModel, table_name="examples", primary_keys=["id"]):
+            id: int = ColumnField(description="ID", primary_key=True)
+            name: str = Field(description="Name")  # not allowed
+            value: float = ColumnField(description="Value")
+
+    except PydanticTableTypeError as e:
+        logg.debug(e)

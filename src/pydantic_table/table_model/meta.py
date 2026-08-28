@@ -2,6 +2,8 @@ from typing import Any, Type
 
 from pydantic import BaseModel, Field
 
+from pydantic_table.exceptions import PydanticTableTypeError
+from pydantic_table.table_model.field import ColumnFieldInfo
 from pydantic_table.table_model.internal_attr import AttrDescription, InternalAttr
 
 
@@ -22,7 +24,7 @@ class TableMeta(type(BaseModel)):
     """
 
     def __new__(
-        cls,
+        mcs,
         name: str,
         bases: tuple[Type, ...],
         namespace: dict[str, Any],
@@ -44,21 +46,32 @@ class TableMeta(type(BaseModel)):
         # )
         nested_merge(
             namespace,
-            cls._get_field_namespace_info(InternalAttr.table_name, table_name),
+            mcs._get_field_namespace_info(InternalAttr.table_name, table_name),
         )
         nested_merge(
             namespace,
-            cls._get_field_namespace_info(InternalAttr.primary_keys, primary_keys),
+            mcs._get_field_namespace_info(InternalAttr.primary_keys, primary_keys),
         )
 
         for field in [InternalAttr.missing, InternalAttr.extra]:
-            nested_merge(namespace, cls._get_field_namespace_info(field, []))
+            nested_merge(namespace, mcs._get_field_namespace_info(field, []))
 
-        return super().__new__(cls, name, bases, namespace, **kwds)
+        cls = super().__new__(mcs, name, bases, namespace, **kwds)
+
+        for field_name, field_info in getattr(cls, "__pydantic_fields__", {}).items():
+            if field_name in InternalAttr.values():
+                continue
+
+            if not isinstance(field_info, ColumnFieldInfo):
+                raise PydanticTableTypeError(
+                    f"{cls.__name__}.{field_name!r} must be declared with {ColumnFieldInfo.__name__}(...), "
+                    f"not Field() or a bare default (got {type(field_info).__name__})"
+                )
+        return cls
 
     @classmethod
     def _get_field_namespace_info(
-        cls, field_name: InternalAttr, parameter: Any
+        mcs, field_name: InternalAttr, parameter: Any
     ) -> dict:
         """
         Create information to add to namespace to create field.

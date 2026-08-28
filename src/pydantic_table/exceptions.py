@@ -4,3 +4,6 @@ class PydanticTableException(Exception):
 
 class PydanticTalbeAlembicException(PydanticTableException):
     pass
+
+class PydanticTableTypeError(TypeError):
+    pass
