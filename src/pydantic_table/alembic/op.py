@@ -49,12 +49,12 @@ def add_column(table: Type[TableModel], name: str):
     """
     Add column
     """
-    if name not in table.column_fields():
+    if name not in table.columns():
         raise PydanticTalbeAlembicException(
             f"Column {name} not present in {table.table_info()}! Cannot add."
         )
 
-    op.add_column(table.table_name(), table.get_sa_column(name))
+    op.add_column(table.table_name(), table.sa_column(name))
 
 
 def drop_column(table: Type[TableModel], name: str):

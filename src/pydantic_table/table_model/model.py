@@ -70,15 +70,21 @@ class TableModel(BaseModel, metaclass=TableMeta):
         return ret
 
     @classmethod
-    def column_fields(cls) -> dict[str, FieldInfo]:
+    def columns(cls) -> dict[str, FieldInfo]:
         """
         Model fields that represent table columns
         """
-        ret = cls.model_fields.copy()
-        for field_name, field_info in cls.model_fields.items():
-            if field_info.exclude:
-                ret.pop(field_name)
+        ret = {
+            field_name: field_info
+            for field_name, field_info in cls.model_fields.items()
+            if not field_info.exclude
+        }
+
         return ret
+
+    @classmethod
+    def column(cls, name: str) -> FieldInfo:
+        return cls.columns()[name]
 
     @classmethod
     def is_primary(cls, column: str) -> bool:
@@ -89,7 +95,10 @@ class TableModel(BaseModel, metaclass=TableMeta):
         return ret
 
     @classmethod
-    def get_sa_column(cls, name: str, foreign_key_col: str | None = None):
+    def sa_column(cls, name: str, foreign_key_col: str | None = None) -> sa.Column:
+        """
+        SQLAlchemy column.
+        """
         foreign_key_args = []
         if foreign_key_col is not None:
             foreign_key = sa.ForeignKey(
@@ -98,17 +107,18 @@ class TableModel(BaseModel, metaclass=TableMeta):
             )
             foreign_key_args.append(foreign_key)
 
-        field_info = cls.column_fields()[name]
-        col = sa.Column(
+        column = cls.column(name)
+        ret = sa.Column(
             name,
             cls._get_field_sa_type(name),
             # TODO: controllable nullability
             nullable=False,
-            default=field_info.default,
+            default=column.default,
+            server_default=column.default,
             primary_key=name in cls.primary_keys(),
             *foreign_key_args,
         )
-        return col
+        return ret
 
     @classmethod
     def get_sa_columns(
@@ -123,9 +133,9 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
         Column names must correspond to TableModel field names.
         """
-        column_list = columns or cls.column_fields().keys()
+        column_list = columns or cls.columns().keys()
         ret = [
-            cls.get_sa_column(field_name, foreign_keys.get(field_name, None))
+            cls.sa_column(field_name, foreign_keys.get(field_name, None))
             for field_name in column_list
         ]
 
@@ -136,7 +146,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
         """
         Get sqlalchemy TypeEngine type of given field based on its annotation type.
         """
-        field_info = cls.column_fields()[field_name]
+        field_info = cls.columns()[field_name]
         assert field_info.annotation is not None
         ret = SaColumnType.from_type(field_info.annotation).value
         return ret
