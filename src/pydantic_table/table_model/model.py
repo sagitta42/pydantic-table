@@ -52,13 +52,13 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
         Looks among existing and extra columns to recover the value.
         """
-        if column not in self.data_dump:
+        if column not in self.data_dump():
             raise PydanticTableColumnError(
                 f"Column {column} does not exist in {self.table_info()}!"
                 f"Schema columns: {list_as_str(self.column_dump().keys())}"
                 f"Extra columns: {list_as_str(self.extra_data.keys())}"
             )
-        ret = self.data_dump[column]
+        ret = self.data_dump()[column]
         return ret
 
     @classmethod

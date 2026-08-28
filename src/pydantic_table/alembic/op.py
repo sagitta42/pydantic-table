@@ -4,9 +4,10 @@ op + pydantic
 
 from alembic import op
 import sqlalchemy as sa
-from typing import Any, Type
+from typing import Type
 
 from pydantic_table.alembic.exceptions import PydanticTalbeAlembicException
+from pydantic_table.logger import logg
 import pydantic_table.sqlalchemy as sap
 
 from pydantic_table.table_model.model import TableModel
@@ -77,7 +78,7 @@ def insert(rows: TableModel | list[TableModel]):
     """
     row_list = rows if isinstance(rows, list) else [rows]
     for row in row_list:
-        table = sap.Table(row.table)
+        table = sap.Table(row.table, autoload_with=op.get_bind())
 
         for col_name in row.missing_columns:
             if col_name in table.c:
@@ -85,7 +86,10 @@ def insert(rows: TableModel | list[TableModel]):
                     f"Row given for table {row.table_name()} is missing column {col_name}!"
                 )
 
-        data = {col: val for col, val in row.column_dump().items() if col in table.c}
+        data = row.column_dump()
+        logg.debug(data)
+        data = {col: val for col, val in data.items() if col in table.c}
+        logg.debug(data)
 
         for col_name, col_value in row.extra_data.items():
             if col_name not in table.c:
@@ -94,6 +98,7 @@ def insert(rows: TableModel | list[TableModel]):
                 )
             data[col_name] = col_value
 
+        logg.debug(data)
         op.execute(table.insert().values(data))
 
 
@@ -103,7 +108,7 @@ def delete_where(table: Type[TableModel], **kwargs):
 
     kwargs in format column=value.
     """
-    tb = sap.Table(table)
+    tb = sap.Table(table, autoload_with=op.get_bind())
     condition = sa.and_(*[tb.c[column] == value for column, value in kwargs.items()])
     op.execute(tb.delete().where(condition))
 
