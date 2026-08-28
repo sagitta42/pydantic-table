@@ -6,6 +6,8 @@ from alembic import op
 import sqlalchemy as sa
 from typing import Any, Type
 
+import pydantic_table.sqlalchemy as sap
+
 from pydantic_table.exceptions import PydanticTalbeAlembicException
 from pydantic_table.table_model.model import TableModel
 
@@ -24,7 +26,10 @@ def create_table(
 
     Column names must correspond to TableModel field names.
     """
-    sa_columns = table_model.get_sa_columns(columns, foreign_keys)
+    sa_columns = [
+        sap.Column(name, table_model, foreign_key=foreign_keys.get(name, None))
+        for name in columns
+    ]
     op.create_table(table_model.table_name(), *sa_columns)
 
 
@@ -35,17 +40,7 @@ def drop_table(table_model: Type[TableModel]):
     op.drop_table(table_model.table_name())
 
 
-def read_table(table: str | Type[TableModel]) -> sa.Table:
-    """
-    Get sqlalchemy table based on given table name or schema.
-    """
-    table_name = table if isinstance(table, str) else table.table_name()
-    metadata = sa.MetaData()
-    ret = sa.Table(table_name, metadata, autoload_with=op.get_bind())
-    return ret
-
-
-def add_column(table: Type[TableModel], name: str):
+def add_column(table: Type[TableModel], name: str, foreign_key: str | None = None):
     """
     Add column
     """
@@ -54,7 +49,7 @@ def add_column(table: Type[TableModel], name: str):
             f"Column {name} not present in {table.table_info()}! Cannot add."
         )
 
-    op.add_column(table.table_name(), table.sa_column(name))
+    op.add_column(table.table_name(), sap.Column(name, table, foreign_key=foreign_key))
 
 
 def drop_column(table: Type[TableModel], name: str):
@@ -82,7 +77,7 @@ def insert(input: TableModel | list[TableModel]):
     """
     rows = input if isinstance(input, list) else [input]
     for row in rows:
-        table = read_table(row.table_name())
+        table = sap.Table(row.table)
         for col_name in row.missing_columns:
             if col_name in table.c:
                 raise PydanticTalbeAlembicException(
@@ -101,26 +96,28 @@ def insert(input: TableModel | list[TableModel]):
         op.execute(table.insert().values(data))
 
 
-def delete(input: TableModel | list[TableModel]):
-    """
-    Delete given row(s) from the table corresponding to its schema.
-
-    Read table based on table name.
-    Invoke alembic execute() with table delete() matching all fields in where()
-    """
-    rows = input if isinstance(input, list) else [input]
-
-    for row in rows:
-        table = read_table(row.table_name())
-        condition = sa.and_(
-            *[table.c[column] == value for column, value in row.model_dump().items()]
-        )
-        op.execute(table.delete().where(condition))
-
-
 def delete_by(table: Type[TableModel], column: str, value: Any):
     """
     Delete rows from table where column has given value.
     """
-    tb = read_table(table.table_name())
+    tb = sap.Table(table)
     op.execute(tb.delete().where(tb.c[column] == value))
+
+
+def deep_delete(input: TableModel | list[TableModel]):
+    """
+    Delete given row(s) from the table corresponding to its schema.
+
+    Read table based on table name.
+    Invoke alembic execute() with table delete() matching all fields in where().
+
+    Note that this operation takes a lot of time, but is the most secure as it deletes exactly the row.
+    """
+    rows = input if isinstance(input, list) else [input]
+
+    for row in rows:
+        table = sap.Table(row.table)
+        condition = sa.and_(
+            *[table.c[column] == value for column, value in row.model_dump().items()]
+        )
+        op.execute(table.delete().where(condition))

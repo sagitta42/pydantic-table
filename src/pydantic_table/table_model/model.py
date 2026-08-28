@@ -10,20 +10,6 @@ from pydantic_table.table_model.internal_attr import InternalAttr
 from pydantic_table.table_model.meta import TableMeta
 
 
-class SaColumnType(enum.Enum):
-    """
-    Mapping between python types and sqlalchemy TypeEngine types
-    """
-
-    int = sa.Integer
-    float = sa.Float
-    str = sa.String
-
-    @classmethod
-    def from_type(cls, t: type):
-        return cls[t.__name__]
-
-
 class TableModel(BaseModel, metaclass=TableMeta):
     """
     Table model.
@@ -38,6 +24,10 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
     if TYPE_CHECKING:
         model_fields: ClassVar[dict[str, ColumnFieldInfo]]
+
+    @property
+    def table(self) -> Type[Self]:
+        return self.__class__
 
     @classmethod
     def table_name(cls) -> str:
@@ -80,67 +70,6 @@ class TableModel(BaseModel, metaclass=TableMeta):
     @classmethod
     def column(cls, name: str) -> ColumnFieldInfo:
         return cls.columns()[name]
-
-    # TODO: move to sqlalchemy submodule
-    @classmethod
-    def sa_column(cls, name: str, foreign_key_col: str | None = None) -> sa.Column:
-        """
-        SQLAlchemy column.
-        """
-        foreign_key_args = []
-        if foreign_key_col is not None:
-            foreign_key = sa.ForeignKey(
-                name=f"fk_{foreign_key_col.replace('.', '_')}",
-                column=foreign_key_col,
-            )
-            foreign_key_args.append(foreign_key)
-
-        column = cls.column(name)
-
-        # TODO: separate default from nullability
-        default = (
-            None if column.is_required() or column.default is None else column.default
-        )
-        ret = sa.Column(
-            name,
-            cls._get_field_sa_type(name),
-            nullable=column.nullable,
-            default=default,
-            server_default=default,
-            primary_key=column.primary_key,
-        )
-        return ret
-
-    @classmethod
-    def get_sa_columns(
-        cls, columns: list[str] | None, foreign_keys: dict[str, str] = {}
-    ) -> list[sa.Column]:
-        """
-        Create sa.Column instances based on model fields.
-
-        # TODO: metaclass
-        foreign_keys (dict[str, str]): dictionary mapping {column name: foreign key column information}
-            Format of foreign key is foreign_table.column
-
-        Column names must correspond to TableModel field names.
-        """
-        column_list = columns or cls.columns().keys()
-        ret = [
-            cls.sa_column(field_name, foreign_keys.get(field_name, None))
-            for field_name in column_list
-        ]
-
-        return ret
-
-    @classmethod
-    def _get_field_sa_type(cls, field_name: str) -> Type[sa.types.TypeEngine]:
-        """
-        Get sqlalchemy TypeEngine type of given field based on its annotation type.
-        """
-        field_info = cls.columns()[field_name]
-        assert field_info.annotation is not None
-        ret = SaColumnType.from_type(field_info.annotation).value
-        return ret
 
     @classmethod
     def _add_description_info(cls):
