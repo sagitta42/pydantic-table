@@ -47,7 +47,7 @@ class BaseMeta(DeclarativeAttributeIntercept):
 
             namespace[column_name] = mapped_column(
                 BaseFieldType.from_type(column_info.annotation),
-                nullable=column_info.default is None,
+                nullable=column_info.nullable,
                 primary_key=column_info.primary_key,
             )
 

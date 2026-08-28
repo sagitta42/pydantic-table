@@ -68,15 +68,6 @@ class TableModel(BaseModel, metaclass=TableMeta):
         return ret
 
     @classmethod
-    def primary_keys(cls) -> list[str]:
-        ret = [
-            column
-            for column, column_info in cls.columns().items()
-            if column_info.primary_key
-        ]
-        return ret
-
-    @classmethod
     def columns(cls) -> dict[str, ColumnFieldInfo]:
         """
         Model fields that represent table columns
@@ -93,6 +84,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
     def column(cls, name: str) -> ColumnFieldInfo:
         return cls.columns()[name]
 
+    # TODO: move to sqlalchemy submodule
     @classmethod
     def sa_column(cls, name: str, foreign_key_col: str | None = None) -> sa.Column:
         """
@@ -115,7 +107,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = sa.Column(
             name,
             cls._get_field_sa_type(name),
-            nullable=default is not None,
+            nullable=column.nullable,
             default=default,
             server_default=default,
             primary_key=column.primary_key,
@@ -181,18 +173,15 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = values.copy()
         ret[InternalAttr.missing] = []
 
-        fields = cls.__dict__["__pydantic_fields__"]
-        field_names = fields.keys()
+        columns = cls.columns()
 
-        for name in field_names:
-            if name in InternalAttr.values():
-                continue
-
-            if name not in values:
-                logg.debug(f"{name} column not in given values")
-                dummy = fields[name].annotation()
-                ret[name] = dummy
-                ret[InternalAttr.missing].append(name)
+        for column_name, column_info in columns.items():
+            if column_name not in values:
+                logg.debug(f"{column_name} column not in given values")
+                assert column_info.annotation is not None
+                dummy = column_info.annotation()
+                ret[column_name] = dummy
+                ret[InternalAttr.missing].append(column_name)
 
         logg.debug(ret)
         return ret
