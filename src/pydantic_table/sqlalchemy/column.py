@@ -26,7 +26,7 @@ def get_column_sa_type(
     """
     Get sqlalchemy TypeEngine type of given field based on its annotation type.
     """
-    column_info = table_model.columns()[name]
+    column_info = table_model.column_fields()[name]
     assert column_info.annotation is not None
     ret = SaColumnType.from_type(column_info.annotation).value
     return ret
@@ -43,7 +43,7 @@ def Column(
         )
         foreign_key_args.append(sa_foreign_key)
 
-    column_info = table_model.column_info()[name]
+    column_info = table_model.column_fields()[name]
     default = (
         None
         if column_info.is_required() or column_info.default is None

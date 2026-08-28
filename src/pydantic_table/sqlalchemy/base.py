@@ -39,10 +39,11 @@ class BaseMeta(DeclarativeAttributeIntercept):
     ):
         namespace["__tablename__"] = model.table_name()
 
-        for column_name, column_info in model.column_info().items():
+        for column_name, column_info in model.column_fields().items():
             if column_info.annotation is None:
+                # TODO: model validator (this should basically be assert level)
                 raise ValueError(
-                    f"pydantic model fields must be annotated for pydantic2base adaptor!\n{column_info}"
+                    f"pydantic model fields must be annotated for pydantic-table sqlalchemy adaptor!\n{column_info}"
                 )
 
             namespace[column_name] = mapped_column(

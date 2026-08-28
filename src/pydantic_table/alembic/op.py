@@ -13,7 +13,7 @@ from pydantic_table.table_model.model import TableModel
 
 
 def create_table(
-    table_model: Type[TableModel],
+    table: Type[TableModel],
     columns: list[str],
     foreign_keys: dict[str, str] = {},
 ):
@@ -27,24 +27,24 @@ def create_table(
     Column names must correspond to TableModel field names.
     """
     sa_columns = [
-        sap.Column(name, table_model, foreign_key=foreign_keys.get(name, None))
+        sap.Column(name, table, foreign_key=foreign_keys.get(name, None))
         for name in columns
     ]
-    op.create_table(table_model.table_name(), *sa_columns)
+    op.create_table(table.table_name(), *sa_columns)
 
 
-def drop_table(table_model: Type[TableModel]):
+def drop_table(table: Type[TableModel]):
     """
     Invoke alembic drop table based on provided TableModel schema.
     """
-    op.drop_table(table_model.table_name())
+    op.drop_table(table.table_name())
 
 
 def add_column(table: Type[TableModel], name: str, foreign_key: str | None = None):
     """
     Add column
     """
-    if name not in table.column_info():
+    if name not in table.column_fields():
         raise PydanticTalbeAlembicException(
             f"Column {name} not present in {table.table_info()}! Cannot add."
         )
@@ -56,7 +56,7 @@ def drop_column(table: Type[TableModel], name: str):
     op.drop_column(table.table_name(), name)
 
 
-def insert(input: TableModel | list[TableModel]):
+def insert(rows: TableModel | list[TableModel]):
     """
     Insert given row(s) to the table corresponding to its schema.
 
@@ -75,36 +75,40 @@ def insert(input: TableModel | list[TableModel]):
         - if present in table, include (past/future schema change added/dropped this column)
         - if not present in table, raise error (non-existing columns were given)
     """
-    rows = input if isinstance(input, list) else [input]
-    for row in rows:
+    row_list = rows if isinstance(rows, list) else [rows]
+    for row in row_list:
         table = sap.Table(row.table)
+
         for col_name in row.missing_columns:
             if col_name in table.c:
                 raise PydanticTalbeAlembicException(
                     f"Row given for table {row.table_name()} is missing column {col_name}!"
                 )
 
-        data = {col: val for col, val in row.model_dump().items() if col in table.c}
+        data = {col: val for col, val in row.column_dump().items() if col in table.c}
 
         for col_name, col_value in row.extra_data.items():
             if col_name not in table.c:
                 raise PydanticTalbeAlembicException(
-                    f"Row given for table {row.table_name()} has extra column {col_name}!"
+                    f"Row given for table {row.table_info()} has extra column {col_name}!"
                 )
             data[col_name] = col_value
 
         op.execute(table.insert().values(data))
 
 
-def delete_by(table: Type[TableModel], column: str, value: Any):
+def delete_where(table: Type[TableModel], **kwargs):
     """
-    Delete rows from table where column has given value.
+    Delete rows from table where columns have given values.
+
+    kwargs in format column=value.
     """
     tb = sap.Table(table)
-    op.execute(tb.delete().where(tb.c[column] == value))
+    condition = sa.and_(*[tb.c[column] == value for column, value in kwargs.items()])
+    op.execute(tb.delete().where(condition))
 
 
-def deep_delete(input: TableModel | list[TableModel]):
+def deep_delete(rows: TableModel | list[TableModel]):
     """
     Delete given row(s) from the table corresponding to its schema.
 
@@ -113,11 +117,8 @@ def deep_delete(input: TableModel | list[TableModel]):
 
     Note that this operation takes a lot of time, but is the most secure as it deletes exactly the row.
     """
-    rows = input if isinstance(input, list) else [input]
+    row_list = rows if isinstance(rows, list) else [rows]
+    table = row_list[0].table
 
-    for row in rows:
-        table = sap.Table(row.table)
-        condition = sa.and_(
-            *[table.c[column] == value for column, value in row.model_dump().items()]
-        )
-        op.execute(table.delete().where(condition))
+    for row in row_list:
+        delete_where(table, **row.data_dump())

@@ -21,6 +21,8 @@ def test_model():
     with open(model_config_path) as f:
         model = ExampleTable(**json.load(f))
 
+    model.__class__.model_fields
+
     logg.debug("Example table")
     logg.debug(model)
 

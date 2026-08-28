@@ -22,26 +22,20 @@ class TableModel(BaseModel, metaclass=TableMeta):
     It is used by the class (table) to determine name without an instance (row) present.
     """
 
-    if TYPE_CHECKING:
-        model_fields: ClassVar[dict[str, ColumnFieldInfo]]
-
     @property
     def table(self) -> Type[Self]:
         return self.__class__
 
-    def get(self, column: str) -> Any:
-        """
-        Get value of column.
+    @property
+    def extra_data(self) -> dict[str, Any]:
+        ret = self.__dict__[InternalAttr.extra]
+        return ret
 
-        Looks among existing and extra columns to recover the value.
+    def data_dump(self) -> dict[str, Any]:
         """
-        if column not in self.real_data:
-            raise PydanticTableColumnError(
-                f"Column {column} does not exist in {self.table_info}!"
-                f"Schema columns: {list_as_str(self.data.keys())}"
-                f"Extra columns: {list_as_str(self.extra_data.keys())}"
-            )
-        ret = self.real_data[column]
+        Actual data stored in row including extra columns.
+        """
+        ret = self.column_dump() | self.extra_data
         return ret
 
     @property
@@ -49,21 +43,22 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = self.__dict__[InternalAttr.missing]
         return ret
 
-    @property
-    def data(self) -> dict[str, Any]:
+    def column_dump(self) -> dict[str, Any]:
         return self.model_dump()
 
-    @property
-    def extra_data(self) -> dict[str, Any]:
-        ret = self.__dict__[InternalAttr.extra]
-        return ret
+    def get(self, column: str) -> Any:
+        """
+        Get value of column.
 
-    @property
-    def real_data(self) -> dict[str, Any]:
+        Looks among existing and extra columns to recover the value.
         """
-        Actual data stored in row including extra columns.
-        """
-        ret = self.model_dump() | self.extra_data
+        if column not in self.data_dump:
+            raise PydanticTableColumnError(
+                f"Column {column} does not exist in {self.table_info()}!"
+                f"Schema columns: {list_as_str(self.column_dump().keys())}"
+                f"Extra columns: {list_as_str(self.extra_data.keys())}"
+            )
+        ret = self.data_dump[column]
         return ret
 
     @classmethod
@@ -82,7 +77,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
         return ret
 
     @classmethod
-    def column_info(cls) -> dict[str, ColumnFieldInfo]:
+    def column_fields(cls) -> dict[str, ColumnFieldInfo]:
         """
         Model info that represent table columns.
 
@@ -117,7 +112,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = data.copy()
         ret[InternalAttr.missing] = []
 
-        columns = cls.column_info()
+        columns = cls.column_fields()
 
         for column_name, column_info in columns.items():
             if column_name not in data:
@@ -139,7 +134,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = data.copy()
         ret[InternalAttr.extra] = {}
 
-        columns = cls.column_info()
+        columns = cls.column_fields()
 
         for column_name, column_value in data.items():
             if not column_name in columns:
