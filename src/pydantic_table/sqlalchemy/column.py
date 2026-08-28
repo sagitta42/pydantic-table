@@ -43,7 +43,7 @@ def Column(
         )
         foreign_key_args.append(sa_foreign_key)
 
-    column_info = table_model.column(name)
+    column_info = table_model.column_info()[name]
     default = (
         None
         if column_info.is_required() or column_info.default is None

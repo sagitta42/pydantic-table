@@ -44,7 +44,7 @@ def add_column(table: Type[TableModel], name: str, foreign_key: str | None = Non
     """
     Add column
     """
-    if name not in table.columns():
+    if name not in table.column_info():
         raise PydanticTalbeAlembicException(
             f"Column {name} not present in {table.table_info()}! Cannot add."
         )
@@ -86,7 +86,7 @@ def insert(input: TableModel | list[TableModel]):
 
         data = {col: val for col, val in row.model_dump().items() if col in table.c}
 
-        for col_name, col_value in row.extra_columns.items():
+        for col_name, col_value in row.extra_data.items():
             if col_name not in table.c:
                 raise PydanticTalbeAlembicException(
                     f"Row given for table {row.table_name()} has extra column {col_name}!"

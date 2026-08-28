@@ -39,7 +39,7 @@ class BaseMeta(DeclarativeAttributeIntercept):
     ):
         namespace["__tablename__"] = model.table_name()
 
-        for column_name, column_info in model.columns().items():
+        for column_name, column_info in model.column_info().items():
             if column_info.annotation is None:
                 raise ValueError(
                     f"pydantic model fields must be annotated for pydantic2base adaptor!\n{column_info}"

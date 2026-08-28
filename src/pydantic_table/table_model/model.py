@@ -55,9 +55,12 @@ class TableModel(BaseModel, metaclass=TableMeta):
         return ret
 
     @classmethod
-    def columns(cls) -> dict[str, ColumnFieldInfo]:
+    def column_info(cls) -> dict[str, ColumnFieldInfo]:
         """
-        Model fields that represent table columns
+        Model info that represent table columns.
+
+        Hidden excluded columns are skipped.
+        TODO: look if in internal fields, not if exclude True (?)
         """
         ret = {
             field_name: field_info
@@ -66,18 +69,6 @@ class TableModel(BaseModel, metaclass=TableMeta):
         }
 
         return ret
-
-    @classmethod
-    def column(cls, name: str) -> ColumnFieldInfo:
-        return cls.columns()[name]
-
-    @classmethod
-    def _add_description_info(cls):
-        """
-        Add column descriptions to table metadata
-        """
-        # TODO: implement executing call to add descriptions
-        raise NotImplementedError
 
     @model_validator(mode="before")
     def check_hidden(self) -> Self:
@@ -99,7 +90,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = data.copy()
         ret[InternalAttr.missing] = []
 
-        columns = cls.columns()
+        columns = cls.column_info()
 
         for column_name, column_info in columns.items():
             if column_name not in data:
@@ -121,7 +112,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = data.copy()
         ret[InternalAttr.extra] = {}
 
-        columns = cls.columns()
+        columns = cls.column_info()
 
         for column_name, column_value in data.items():
             if not column_name in columns:
