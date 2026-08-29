@@ -4,7 +4,7 @@ op adaptors
 
 from alembic import op
 import sqlalchemy as sa
-from typing import Type
+from typing import Any, Type
 
 from pydantic_table.alembic.archive import archive_column
 from pydantic_table.alembic.exceptions import PydanticTableAlembicException
@@ -54,13 +54,53 @@ def update_where(table: Type[TableModel], values: dict[str, Any], **kwargs):
     logg.debug(f"Values: {dict_as_str(values)}")
     op.execute(tb.update().where(condition).values(values))
 
+
+def add_column(
+    table: Type[TableModel],
+    name: str,
+    data: list[TableModel] | TableModel = [],
+    foreign_key: str | None = None,
+):
     """
-    Add column
+    Add column to table.
+
+    Given name must be present in table column fields or in archive.
+    Fill column with given data; otherwise initialize to column default (must be present).
+
+    In case column is not nullable, no default, and data is given:
+        - create column first as nullable to prevent crash
+        - add given column data (use other columns for condition)
+        - set column back to nullable
     """
+    # TODO: check archive for dropped columns backwards compatibility
     if name not in table.column_fields():
         raise PydanticTableAlembicException(
             f"Column {name} not present in table {table.table_info()}! Cannot add."
         )
+
+    column_info = table.column_fields()[name]
+    sa_column = sap.Column(name, table, foreign_key=foreign_key)
+
+    if not column_info.nullable and column_info.is_required():
+        data_list = data if isinstance(data, list) else [data]
+        if len(data_list) == 0:
+            raise PydanticTableAlembicException(
+                f"Column {name} in {table.table_info()} is not nullable and no default was given. You provided no data."
+                f"Either provide data to add, or a default; or make column nullable"
+            )
+
+        sa_column.nullable = True
+        op.add_column(table.table_name(), sa_column)
+        for row in data_list:
+            update_where(
+                table,
+                values={name: row.get(name)},
+                **row.column_dump(exclude={name: True}),
+            )
+        # op.alter_column(table.table_name(), name, nullable=False) - error
+        with op.batch_alter_table(table.table_name()) as batch_op:
+            batch_op.alter_column(name, nullable=False)
+        return
 
     op.add_column(table.table_name(), sap.Column(name, table, foreign_key=foreign_key))
 
