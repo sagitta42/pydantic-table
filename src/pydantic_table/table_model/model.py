@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, ClassVar, Self, Type
+from typing import Any, Self, Type
 
 from pydantic import BaseModel, model_validator
 
@@ -43,8 +43,20 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = self.__dict__[InternalAttr.missing]
         return ret
 
-    def column_dump(self) -> dict[str, Any]:
-        return self.model_dump()
+    def column_dump(self, **kwargs) -> dict[str, Any]:
+        """
+        Column dump.
+
+        Model dump of currently present columns i.e. missing columns ignored.
+        Extra columns can be excluded via kwargs.
+        Missing columns cannot be included i.e. kwargs will be overwritten.
+        """
+        exclude_args = {col_name: True for col_name in self.missing_columns}
+        if not "exclude" in kwargs:
+            kwargs["exclude"] = {}
+        kwargs["exclude"] |= exclude_args
+        
+        return self.model_dump(**kwargs)
 
     def get(self, column: str) -> Any:
         """
