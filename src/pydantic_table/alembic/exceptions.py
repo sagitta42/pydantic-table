@@ -1,2 +1,2 @@
-class PydanticTalbeAlembicException(Exception):
+class PydanticTableAlembicException(Exception):
     pass
