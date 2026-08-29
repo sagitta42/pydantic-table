@@ -109,10 +109,12 @@ def drop_column(table: Type[TableModel], name: str):
     """
     Drop column.
 
-    Drop column from the able.
+    Drop column from the table.
+    Archive column if not present in TableModel anymore
+        (schema update removes column)
     """
-
-    archive_column(table, name)
+    if name not in table.column_fields():
+        archive_column(table, name)
 
     op.drop_column(table.table_name(), name)
 

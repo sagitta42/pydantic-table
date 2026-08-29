@@ -5,17 +5,26 @@ from typing import Type
 
 import inspect
 
+from alembic import op
+
 from pydantic_table.logger import logg
 from pydantic_table.table_model.model import TableModel
+import pydantic_table.sqlalchemy as sap
 
 
 def archive_column(table: Type[TableModel], column: str):
     """
     Archive column information.
 
+    Extract column field information from table (not table model, which does not have it anymore).
     Extract path to the migration file (assumes drop_column is called from a migration)
     Create archive directory if does not exist.
+    Serialize field information to be saved in archive JSON.
     """
+
+    tb = sap.Table(table, autoload_with=op.get_bind())
+    sa_column = tb.c[column]
+    column_info = sap.ColumnFieldInfo(sa_column)
 
     frame = inspect.currentframe()
     assert frame is not None, "got null frame"
@@ -39,7 +48,6 @@ def archive_column(table: Type[TableModel], column: str):
     if not archive.exists():
         os.makedirs(archive)
 
-    column_info = table.column_fields()[column]
     column_dict = column_info.as_dict()
     column_dict["annotation"] = str(column_dict["annotation"])
     archive_dict = {column: column_dict}
