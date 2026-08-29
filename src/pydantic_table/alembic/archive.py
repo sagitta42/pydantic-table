@@ -12,6 +12,7 @@ from pydantic_table.table_model.model import TableModel
 import pydantic_table.sqlalchemy as sap
 
 
+# TODO: multiple columns
 def archive_column(table: Type[TableModel], column: str):
     """
     Archive column information.
@@ -20,12 +21,8 @@ def archive_column(table: Type[TableModel], column: str):
     Extract path to the migration file (assumes drop_column is called from a migration)
     Create archive directory if does not exist.
     Serialize field information to be saved in archive JSON.
+    Get dict data from sa.Table to archive.
     """
-
-    tb = sap.Table(table, autoload_with=op.get_bind())
-    sa_column = tb.c[column]
-    column_info = sap.ColumnFieldInfo(sa_column)
-
     frame = inspect.currentframe()
     assert frame is not None, "got null frame"
     opp_caller = frame.f_back
@@ -45,12 +42,22 @@ def archive_column(table: Type[TableModel], column: str):
         logg.debug("-> already exists")
         return
 
+    engine = op.get_bind()
+
+    tb = sap.Table(table, autoload_with=engine)
+    sa_column = tb.c[column]
+    column_info = sap.ColumnFieldInfo(sa_column)
+
     if not archive.exists():
         os.makedirs(archive)
 
-    column_dict = column_info.as_dict()
-    column_dict["annotation"] = str(column_dict["annotation"])
-    archive_dict = {column: column_dict}
+    info_dict = column_info.as_dict()
+    info_dict["annotation"] = str(info_dict["annotation"])
+
+    result = engine.execute(tb.select())
+    data_dict = [dict(row) for row in result.mappings()]
+
+    archive_dict = {column: {"info": info_dict, "data": data_dict}}
     logg.debug(f"archive dict: {archive_dict}")
 
     with open(archive_file, "w") as f:
