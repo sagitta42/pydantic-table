@@ -12,6 +12,7 @@ from pydantic_table.logger import logg
 import pydantic_table.sqlalchemy as sap
 
 from pydantic_table.table_model.model import TableModel
+from pydantic_table.utils import dict_as_str
 
 
 def create_table(
@@ -42,7 +43,17 @@ def drop_table(table: Type[TableModel]):
     op.drop_table(table.table_name())
 
 
-def add_column(table: Type[TableModel], name: str, foreign_key: str | None = None):
+def update_where(table: Type[TableModel], values: dict[str, Any], **kwargs):
+    """
+    Update table with given values {column: value}.
+
+    kwargs in format column=value for the where condition
+    """
+    tb = sap.Table(table, autoload_with=op.get_bind())
+    condition = _get_condition(tb, **kwargs)
+    logg.debug(f"Values: {dict_as_str(values)}")
+    op.execute(tb.update().where(condition).values(values))
+
     """
     Add column
     """
@@ -115,10 +126,10 @@ def delete_where(table: Type[TableModel], **kwargs):
     """
     Delete rows from table where columns have given values.
 
-    kwargs in format column=value.
+    kwargs in format column=value for the where condition.
     """
     tb = sap.Table(table, autoload_with=op.get_bind())
-    condition = sa.and_(*[tb.c[column] == value for column, value in kwargs.items()])
+    condition = _get_condition(tb, **kwargs)
     op.execute(tb.delete().where(condition))
 
 
@@ -136,3 +147,9 @@ def deep_delete(rows: TableModel | list[TableModel]):
 
     for row in row_list:
         delete_where(table, **row.data_dump())
+
+
+def _get_condition(tb: sa.Table, **kwargs) -> sa.ColumnElement[bool]:
+    logg.debug(f"Condition: {dict_as_str(kwargs)}")
+    condition = sa.and_(*[tb.c[column] == value for column, value in kwargs.items()])
+    return condition

@@ -10,3 +10,7 @@ def list_as_str(lst: Iterable) -> str:
     "install --no-root"
     """
     return " ".join(str(element) for element in lst)
+
+
+def dict_as_str(dct: dict) -> str:
+    return " ".join(f"{key}={value}" for key, value in dct.items())
