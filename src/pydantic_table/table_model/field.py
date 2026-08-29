@@ -2,8 +2,9 @@ from typing import Any
 
 from pydantic import Field
 from pydantic.fields import FieldInfo
+from pydantic_core import PydanticUndefined
 
-# from pydantic.fields import _FieldInfoInputs
+# from pydantic.fields import _FieldInfoInputs,  _FieldInfoAsDict
 
 
 class ColumnFieldInfo(FieldInfo):  # type: ignore[misc]
@@ -14,6 +15,31 @@ class ColumnFieldInfo(FieldInfo):  # type: ignore[misc]
 
         self.primary_key: bool = primary_key
         self.nullable: bool = nullable
+
+    def as_dict(self) -> dict[str, Any]:
+        """
+        Serialize column information properties as dict.
+
+        Get FieldInfo serialization and extract annotation and attributes.
+        Add custom column field info slots.
+        Ignore pydantic undefined properties.
+        """
+
+        ret = dict(self.asdict())
+        ret.pop("metadata")
+
+        attr: dict[str, Any] = ret.pop("attributes")
+        slots = {name: getattr(self, name) for name in self.__class__.__slots__}
+        full_attr = attr | slots
+        defined_attr = {
+            name: value
+            for name, value in full_attr.items()
+            if value is not PydanticUndefined
+        }
+
+        ret |= defined_attr
+
+        return ret
 
     @classmethod
     def from_field_info(
