@@ -1,11 +1,12 @@
 """
-op + pydantic
+op adaptors
 """
 
 from alembic import op
 import sqlalchemy as sa
 from typing import Type
 
+from pydantic_table.alembic.archive import archive_column
 from pydantic_table.alembic.exceptions import PydanticTableAlembicException
 from pydantic_table.logger import logg
 import pydantic_table.sqlalchemy as sap
@@ -54,6 +55,14 @@ def add_column(table: Type[TableModel], name: str, foreign_key: str | None = Non
 
 
 def drop_column(table: Type[TableModel], name: str):
+    """
+    Drop column.
+
+    Drop column from the able.
+    """
+
+    archive_column(table, name)
+
     op.drop_column(table.table_name(), name)
 
 
