@@ -8,8 +8,6 @@ pip install https://github.com/sagitta42/pydantic-table.git@v0.3.0
 
 ## `TableModel` and `ColumnField`
 
-Example:
-
 ```python
 # tables.py
 from pydantic_table import ColumnField, TableModel
@@ -17,23 +15,57 @@ from pydantic_table import ColumnField, TableModel
 class ExampleTable(TableModel, table_name="examples"):
     id: int = ColumnField(description="ID", primary_key=True)
     name: str = ColumnField(description="Name")
-    value: float = ColumnField(description="Value", nullable=True)
+    value: float = ColumnField(description="Value", nullable=True)    
 ```
 
-`TableModel` is a pydantic `BaseModel` that defines:
+```python
+>>> ExampleTable.column_fields()
+{
+ 'id': ColumnFieldInfo(annotation=int, required=True, primary_key=True, nullable=False),
+ 'name': ColumnFieldInfo(annotation=str, required=True, primary_key=False, nullable=False),
+ 'value': ColumnFieldInfo(annotation=float, required=True, primary_key=False, nullable=True)
+}
+>>> row = ExampleTable(id=42, name="Alice", value=1.618)
+>>> row.model_dump()
+{'table_name__': 'examples', 'missing_columns__': [], 'extra_columns__': {'new_column': 'foo'}, 'id': 42, 'name': 'Alice', 'value': 1.618}
+>>> row.column_dump()
+{'id': 42, 'name': 'Alice', 'value': 1.618}
+```
 
-- Column information via `ColumnField()` definition:
-  - name: field name
-  - type: field annotation
-  - other properties: `default` from standard `Field` (`FieldInfo`) property, `primary_key` and `nullable` properties from `ColumnField` (`ColumnFieldInfo`) additional properties
-  - `TableModel.column_fields()` is `dict[str, ColumnFieldInfo]` for each column, where `ColumnFieldInfo` contains all `FieldInfo` properties + `primary_key` and `nullable`
+- `TableModel` is a pydantic `BaseModel`
+  - model field name = column name
+  - model field annotation = column data type
+  - `TableModel.column_fields()` returns `dict[str, ColumnFieldInfo]`
+  - `ColumnFieldInfo` is `FieldInfo` with extra properties `primary_key` and `nullable`
+  - `model_dump()` returns all fields including special internal fields - see [alembic][#alembic] section on the roles of `missing_columns__` and `extra_columns__`
+  - `column_dump()` returns actual columns
+
 - **One source of truth**:
   - class defines **table schema**
+
   - instance represents a **data row**
+
   - **validation** via pydantic at earliest stage (e.g. before alembic migrations, in-app DB calls etc.)
+
   - defines **payload** for API
-  - compatible with `Table` and `DeclarativeBase` from `sqlalchemy`  via adaptors in `pydantic_table.sqlalchemy` - see [sqlalchemy][#sqlalchemy] section
-- **Schema changes backwards compatibility** via alembic adaptors in `pydantic_table.alembic`: `ExampleTable` can be updated directly by adding/removing column fields, followed by an add/drop column migration; previous migrations are not broken if adaptors are used - see [alembic][#alembic] section
+
+  - **adaptors** for `sa.Column` and `sa.Table` from `sqlalchemy` in `pydantic_table.sqlalchemy`
+
+    ```python
+    sa_column: sa.Column = Column("id", column_field_info, foreign_key="another_table.name")
+    sa_table: sa.Table = Table(ExampleTable, autoload_with=op.get_bind())
+    ```
+
+  - **adaptor** for `DeclarativeBase` from `sqlalchemy` via **BaseMeta** in `pydantic_table.sqlalchemy` - see [sqlalchemy][#sqlalchemy] section
+
+    ```python
+    class ExampleTableBase(Base, metaclass=BaseMeta, model=ExampleTable)
+    ```
+
+- **Schema changes** easily tracked
+
+  - update to `TableModel` child class is auto-reflected in payload and DB Base **at the same time**
+  - **backwards compatibility** via alembic adaptors in `pydantic_table.alembic.op`: `ExampleTable` can be updated directly by adding/removing column fields, followed by an add/drop column migration; previous migrations are not broken if `op.drop_column()` and `op.drop_table()` adaptors are used - see [alembic][#alembic] section
 
 ## sqlalchemy
 
@@ -74,8 +106,6 @@ class ExampleTableBase(Base, metaclass=BaseMeta, model=ExampleTable):
 ```
 
 Convenience: **shared definition** between **db models** and **payload schemas**
-
-Example:
 
 ```python
 # schemas.py
@@ -138,8 +168,7 @@ from tables import ExampleTable
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # specify columns explicitly to account for potential future changes to ExampleTable schema
-    opp.create_table(ExampleTable, columns=["id", "name", "value"])
+    opp.create_table(ExampleTable)
 
 
 def downgrade() -> None:
@@ -149,9 +178,12 @@ def downgrade() -> None:
 
 Backwards compatibility:
 
-- If new column fields are added to `ExampleTable` in the future, they will be ignored during table creation - it uses only specified columns.
+- If **new column fields** are added to or **old column fields are dropped** from `ExampleTable` at the future point, the old revision above **is not broken**,
 
-- *If columns are removed, backwards compatibility currently not supported /does not have a solution, as column information such as nullability, primary key, default etc. is lost*
+- If this revision is "re-migrated" via downgrade followed by upgrade, `opp` will detect said schema change comparing it to the table schema at drop moment, and **archive a snapshot of table model** in this revision under `versions/.archive`.
+
+- The re-upgrade will re-create table based on archived `TableModel` rather than the changed one
+- **Make sure** to **NOT DELETE** the archive `*.json` revision files - keep track of them the same way the `*.py` revision files are managed
 
 ### insert/remove data
 
@@ -162,22 +194,22 @@ from pydantic_table.alembic import op as opp
 from tables import ExampleTable
 
 data = ExampleTable(id=42, name="Alice", value=2.718)
-
 def upgrade() -> None:
     """Upgrade schema."""
-    # table name is already stored in ExampleTable
-    opp.insert(data)
+	# id will be stored under extra columns even if dropped from ExampleTable in the future
+    opp.insert(data) # table name is already stored in ExampleTable
 
 def downgrade() -> None:
     """Downgrade schema."""
+    # getter will extract "id" from extra columns data even if column is removed in the future
     opp.delete_where(ExampleTable, id=data.get("id"))
 ```
 
 Backwards compatibility:
 
 - If new column fields are added to `ExampleTable` in the future, they will be ignored as they are not provided in the migration's data, and are not present in the table at that revision
-- If columnd fields are removed from `ExampleTable` in the future, this will not break the migration as `TableModel` will store the extra field values internally, and retrieve them by detecting those columns in database at that revision
-- **IMPORTANT**: Make sure to use `data.get("id")` rather than `data.id` to avoid crash for that exact reason
+- If column fields are removed from `ExampleTable` in the future, this will not break the migration as `TableModel` will store the extra field values internally, and retrieve them by detecting those columns in database at that revision
+- The getter `data.get("id")` extracts "id" value from extra columns even if "id" is eventually removed from `ExampleTable` in a future schema update. Alternatively, use `id=42`, `ExampleTable(id=id, ...)` and `opp.delete_where(..., id=id)`
 
 ### add column
 
@@ -203,6 +235,7 @@ def upgrade() -> None:
     # row or list of rows with values for new column
     # and values for other columns for where condition as column=value
     data = ExampleTable(id=42, new_column="foo")
+    opp.add_column(ExampleTable, "new_column", data=data)
 
 def downgrade() -> None:
     """Downgrade schema."""
@@ -239,6 +272,10 @@ def downgrade() -> None:
     # data = ExampleTable(id=42, value=2.718)
     # opp.add_column(ExampleTable, "value", data=data)
 ```
+
+Backwards compatibility:
+
+Here downgrade is possible even though information on properties of `"value"` column such as primary key, nullable etc. are not present in `ExampleTable` anymore because at `drop_column()` its absence will be detected by `opp`, and an archive of column field info will be saved in the revision archive, similar to deleting table.
 
 ### fallback to alembic op
 
