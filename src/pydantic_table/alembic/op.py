@@ -20,7 +20,6 @@ from pydantic_table.utils import dict_as_str
 
 def create_table(
     table: Type[TableModel],
-    columns: list[str],
     foreign_keys: dict[str, str] = {},
 ):
     """
@@ -42,11 +41,8 @@ def create_table(
                 f"Table {table.table_info()} schema has changed relative to this revision but archive file not found! Cannot create table."
             )
     else:
-        column_fields = {
-            column_name: column_info
-            for column_name, column_info in table.column_fields().items()
-            if column_name in columns
-        }
+        column_fields = table.column_fields()
+        
     sa_columns = [
         sap.Column(name, column_info, foreign_key=foreign_keys.get(name, None))
         for name, column_info in column_fields.items()

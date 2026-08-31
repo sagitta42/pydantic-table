@@ -25,7 +25,7 @@ data = ExampleTable(id=42, name="Alice", value=2.718)
 
 def upgrade() -> None:
     """Upgrade schema."""
-    opp.create_table(ExampleTable, columns=["id", "name", "value"])
+    opp.create_table(ExampleTable)
     opp.insert(data)
 
 
