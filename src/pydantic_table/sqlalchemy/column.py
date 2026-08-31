@@ -31,19 +31,18 @@ class ColumnType(enum.Enum):
 
 
 def get_column_sa_type(
-    name: str, table_model: Type[TableModel]
+    column_info: pt_field.ColumnFieldInfo,
 ) -> Type[sa.types.TypeEngine]:
     """
     Get sqlalchemy TypeEngine type of given field based on its annotation type.
     """
-    column_info = table_model.column_fields()[name]
     assert column_info.annotation is not None
     ret = SaColumnType.from_type(column_info.annotation)
     return ret
 
 
 def Column(
-    name: str, table_model: Type[TableModel], foreign_key: str | None = None
+    name: str, column_info: pt_field.ColumnFieldInfo, foreign_key: str | None = None
 ) -> sa.Column:
     foreign_key_args = []
     if foreign_key is not None:
@@ -53,7 +52,6 @@ def Column(
         )
         foreign_key_args.append(sa_foreign_key)
 
-    column_info = table_model.column_fields()[name]
     default = (
         None
         if column_info.is_required() or column_info.default is None
@@ -62,7 +60,7 @@ def Column(
 
     ret = sa.Column(
         name,
-        get_column_sa_type(name, table_model),
+        get_column_sa_type(column_info),
         nullable=column_info.nullable,
         default=default,
         server_default=default,

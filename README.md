@@ -6,7 +6,7 @@ Use pydantic model as single source of truth for SQLAlchemy table definition and
 pip install https://github.com/sagitta42/pydantic-table.git@v0.3.0
 ```
 
-## `TableModel`
+## `TableModel` and `ColumnField`
 
 Example:
 
@@ -26,6 +26,7 @@ class ExampleTable(TableModel, table_name="examples"):
   - name: field name
   - type: field annotation
   - other properties: `default` from standard `Field` (`FieldInfo`) property, `primary_key` and `nullable` properties from `ColumnField` (`ColumnFieldInfo`) additional properties
+  - `TableModel.column_fields()` is `dict[str, ColumnFieldInfo]` for each column, where `ColumnFieldInfo` contains all `FieldInfo` properties + `primary_key` and `nullable`
 - **One source of truth**:
   - class defines **table schema**
   - instance represents a **data row**
@@ -47,10 +48,11 @@ from tables import ExampleTable
 table = sap.Table(ExampleTable, autoload_with=op.get_bind())
 ```
 
-Get single `sa.Column`:
+Get single `sa.Column` from your `ColumnFieldInfo`:
 
 ```python
-sap.Column("id", ExampleTable, foreign_key="another_table.name")
+column_info = ExampleTable.column_fields()["id"]
+sap.Column("id", column_info, foreign_key="another_table.name")
 ```
 
 ### `Base` adaptor

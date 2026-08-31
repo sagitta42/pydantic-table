@@ -29,10 +29,12 @@ def create_table(
 
     Column names must correspond to TableModel field names.
     """
-    sa_columns = [
-        sap.Column(name, table, foreign_key=foreign_keys.get(name, None))
-        for name in columns
-    ]
+    sa_columns = []
+    for name in columns:
+        column_info = table.column_fields()[name]
+        sa_col = sap.Column(name, column_info, foreign_key=foreign_keys.get(name, None))
+        sa_columns.append(sa_col)
+
     op.create_table(table.table_name(), *sa_columns)
 
 
@@ -78,8 +80,7 @@ def add_column(
             f"Column {name} not present in table {table.table_info()}! Cannot add."
         )
 
-    column_info = table.column_fields()[name]
-    sa_column = sap.Column(name, table, foreign_key=foreign_key)
+    sa_column = sap.Column(name, column_info, foreign_key=foreign_key)
 
     if not column_info.nullable and column_info.is_required():
         data_list = data if isinstance(data, list) else [data]
@@ -102,7 +103,9 @@ def add_column(
             batch_op.alter_column(name, nullable=False)
         return
 
-    op.add_column(table.table_name(), sap.Column(name, table, foreign_key=foreign_key))
+    op.add_column(
+        table.table_name(), sap.Column(name, column_info, foreign_key=foreign_key)
+    )
 
 
 def drop_column(table: Type[TableModel], name: str):
