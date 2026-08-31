@@ -7,7 +7,10 @@ import sqlalchemy as sa
 from typing import Any, Type
 
 from pydantic_table.alembic.archive import Archive
-from pydantic_table.alembic.exceptions import PydanticTableAlembicException
+from pydantic_table.alembic.exceptions import (
+    ArchiveException,
+    PydanticTableAlembicException,
+)
 from pydantic_table.logger import logg
 import pydantic_table.sqlalchemy as sap
 
@@ -75,13 +78,24 @@ def add_column(
         - set column back to nullable
     """
     # TODO: check archive for dropped columns backwards compatibility
-    if name not in table.column_fields():
-        raise PydanticTableAlembicException(
-            f"Column {name} not present in table {table.table_info()}! Cannot add."
-        )
+    if name in table.column_fields():
+        column_info = table.column_fields()[name]
+    else:
+        archive = Archive(table)
+        try:
+            column_info = archive.get_column_info(name)
+        except ArchiveException:
+            raise PydanticTableAlembicException(
+                f"Column {name} not present in table {table.table_info()} or in archive! Cannot add."
+            )
 
     sa_column = sap.Column(name, column_info, foreign_key=foreign_key)
 
+    logg.debug(f"Adding column - column info: {column_info}")
+    logg.debug(
+        f"default={column_info.default} default factory={column_info.default_factory} required={column_info.is_required()}"
+    )
+    # is required = neither default nor default factory are defined
     if not column_info.nullable and column_info.is_required():
         data_list = data if isinstance(data, list) else [data]
         if len(data_list) == 0:
@@ -93,6 +107,9 @@ def add_column(
         sa_column.nullable = True
         op.add_column(table.table_name(), sa_column)
         for row in data_list:
+            logg.debug(f"Adding data row - {row}")
+            logg.debug(f"Column dump - {row.column_dump()}")
+            logg.debug(f"Data dump - {row.data_dump()}")
             update_where(
                 table,
                 values={name: row.get(name)},
@@ -152,9 +169,9 @@ def insert(rows: TableModel | list[TableModel]):
                 )
 
         data = row.column_dump()
-        logg.debug(data)
+        logg.debug(f"Inserting data - column dump: {data}")
         data = {col: val for col, val in data.items() if col in table.c}
-        logg.debug(data)
+        logg.debug(f"Inserting data - only columns in table: {data}")
 
         for col_name, col_value in row.extra_data.items():
             if col_name not in table.c:
@@ -163,7 +180,7 @@ def insert(rows: TableModel | list[TableModel]):
                 )
             data[col_name] = col_value
 
-        logg.debug(data)
+        logg.debug(f"Inserting data + extra columns: {data}")
         op.execute(table.insert().values(data))
 
 

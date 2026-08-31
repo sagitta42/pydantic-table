@@ -7,6 +7,7 @@ import inspect
 
 from alembic import op
 
+from pydantic_table.alembic.exceptions import ArchiveException
 from pydantic_table.logger import logg
 from pydantic_table.table_model.field import ColumnFieldInfo
 from pydantic_table.table_model.model import TableModel
@@ -32,21 +33,8 @@ class Archive:
         logg.debug(f"archive file: {self._archive_file}")
 
     @property
-    def exists(self) -> bool:
+    def file_exists(self) -> bool:
         return self._archive_file.exists()
-
-    def _get_revision_filepath(self) -> Path:
-        frame = inspect.currentframe()
-        assert frame is not None, "got null frame"
-        archive_caller = frame.f_back
-        assert archive_caller is not None, "no archive caller frame"
-        opp_caller = archive_caller.f_back
-        assert opp_caller is not None, "no opp caller frame"
-        revision_caller = opp_caller.f_back
-        assert revision_caller is not None, "no revision caller frame"
-
-        ret = Path(revision_caller.f_code.co_filename)
-        return ret
 
     # TODO: multiple columns
     def archive_column_info(self, column: str):
@@ -60,7 +48,7 @@ class Archive:
         Get dict data from sa.Table to archive.
         """
 
-        if self.exists:
+        if self.file_exists:
             logg.debug("-> already exists")
             return
 
@@ -71,7 +59,7 @@ class Archive:
         column_info = sap.ColumnFieldInfo(sa_column)
 
         info_dict = column_info.as_dict()
-        info_dict["annotation"] = str(info_dict["annotation"])
+        info_dict["annotation"] = info_dict["annotation"].__name__
         archive_dict: dict[str, dict[str, Any]] = {column: {"info": info_dict}}
 
         if SAVE_DATA:
@@ -84,10 +72,42 @@ class Archive:
         with open(self._archive_file, "w") as f:
             json.dump(archive_dict, f, indent=2)
 
-        logg.debug(f"Column")
-
     def get_column_info(self, column: str) -> ColumnFieldInfo:
         """
         Get column schema from archive
         """
-        pass
+        if not self._archive_file.exists():
+            raise ArchiveException(f"Archive file {self._archive_file} not found!")
+
+        with open(self._archive_file) as f:
+            file_dict = json.load(f)
+
+        if not column in file_dict:
+            raise ArchiveException(
+                f"Column {column} does not exist in archive file {self._archive_file}!"
+            )
+
+        column_dict = file_dict[column]
+
+        if not "info" in column_dict:
+            raise ArchiveException(
+                f"Field 'info' not found for column {column} in archive file {self._archive_file}!"
+            )
+
+        info_dict = column_dict["info"]
+        info_dict["annotation"] = eval(info_dict["annotation"])
+        ret = ColumnFieldInfo(**info_dict)
+        return ret
+
+    def _get_revision_filepath(self) -> Path:
+        frame = inspect.currentframe()
+        assert frame is not None, "got null frame"
+        archive_caller = frame.f_back
+        assert archive_caller is not None, "no archive caller frame"
+        opp_caller = archive_caller.f_back
+        assert opp_caller is not None, "no opp caller frame"
+        revision_caller = opp_caller.f_back
+        assert revision_caller is not None, "no revision caller frame"
+
+        ret = Path(revision_caller.f_code.co_filename)
+        return ret
