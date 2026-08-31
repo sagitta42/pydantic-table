@@ -40,6 +40,7 @@ class Archive:
         """
         Archive table schema.
         """
+        # TODO: check if content exists, not if file exists
         if self.file_exists:
             logg.debug("-> already exists")
             return
@@ -76,6 +77,7 @@ class Archive:
         Get dict data from sa.Table to archive.
         """
 
+        # TODO: check if content exists, not if file exists
         if self.file_exists:
             logg.debug("-> already exists")
             return

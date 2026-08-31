@@ -33,16 +33,20 @@ def create_table(
     Column names must correspond to TableModel field names.
     """
     archive = Archive()
-    # TODO: table rename
-    column_fields = (
-        archive.read_column_fields(table.table_name())
-        if archive.file_exists
-        else {
+    if archive.file_exists:
+        try:
+            # TODO: table rename
+            column_fields = archive.read_column_fields(table.table_name())
+        except ArchiveException:
+            raise PydanticTableAlembicException(
+                f"Table {table.table_info()} schema has changed relative to this revision but archive file not found! Cannot create table."
+            )
+    else:
+        column_fields = {
             column_name: column_info
             for column_name, column_info in table.column_fields().items()
             if column_name in columns
         }
-    )
     sa_columns = [
         sap.Column(name, column_info, foreign_key=foreign_keys.get(name, None))
         for name, column_info in column_fields.items()
@@ -102,17 +106,16 @@ def add_column(
         - add given column data (use other columns for condition)
         - set column back to nullable
     """
-    # TODO: always read archived file if exists, even if column exists - could be other schema change
-    if name in table.column_fields():
-        column_info = table.column_fields()[name]
-    else:
-        archive = Archive()
+    archive = Archive()
+    if archive.file_exists:
         try:
             column_info = archive.read_column_info(name)
         except ArchiveException:
             raise PydanticTableAlembicException(
                 f"Column {name} not present in table {table.table_info()} or in archive! Cannot add."
             )
+    else:
+        column_info = table.column_fields()[name]
 
     sa_column = sap.Column(name, column_info, foreign_key=foreign_key)
 
