@@ -11,6 +11,8 @@ from pydantic_table.alembic.exceptions import ArchiveException
 from pydantic_table.logger import logg
 from pydantic_table.table_model.field import ColumnFieldInfo
 from pydantic_table.table_model.model import TableModel
+
+import sqlalchemy as sa
 import pydantic_table.sqlalchemy as sap
 
 SAVE_DATA = False
@@ -36,8 +38,23 @@ class Archive:
     def file_exists(self) -> bool:
         return self._archive_file.exists()
 
+    def archive_table_model(self, sa_table: sa.Table):
+        """
+        Archive table schema.
+        """
+        if self.file_exists:
+            logg.debug("-> already exists")
+            return
+
+        table_dict = {}
+        for name, column in sa_table.c.items():
+            table_dict[name] = self._build_column_info_dict(column)
+
+        archive_dict = {sa_table.name: table_dict}
+        self._save_archive_dict(archive_dict)
+
     # TODO: multiple columns
-    def archive_column_info(self, column: str):
+    def archive_column_info(self, column_name: str):
         """
         Archive column information.
 
@@ -55,24 +72,19 @@ class Archive:
         engine = op.get_bind()
 
         tb = sap.Table(self.table, autoload_with=engine)
-        sa_column = tb.c[column]
-        column_info = sap.ColumnFieldInfo(sa_column)
-
-        info_dict = column_info.as_dict()
-        info_dict["annotation"] = info_dict["annotation"].__name__
-        archive_dict: dict[str, dict[str, Any]] = {column: {"info": info_dict}}
+        sa_column = tb.c[column_name]
+        archive_dict: dict[str, dict[str, Any]] = {
+            column_name: {"info": self._build_column_info_dict(sa_column)}
+        }
 
         if SAVE_DATA:
             result = engine.execute(tb.select())
             data_dict = [dict(row) for row in result.mappings()]
-            archive_dict[column]["data"] = data_dict
+            archive_dict[column_name]["data"] = data_dict
 
-        logg.debug(f"archive dict: {archive_dict}")
+        self._save_archive_dict(archive_dict)
 
-        with open(self._archive_file, "w") as f:
-            json.dump(archive_dict, f, indent=2)
-
-    def get_column_info(self, column: str) -> ColumnFieldInfo:
+    def read_column_info(self, column: str) -> ColumnFieldInfo:
         """
         Get column schema from archive
         """
@@ -98,6 +110,21 @@ class Archive:
         info_dict["annotation"] = eval(info_dict["annotation"])
         ret = ColumnFieldInfo(**info_dict)
         return ret
+
+    def _build_column_info_dict(self, column: sa.Column) -> dict[str, Any]:
+        """
+        Build column field info dict based on sqlalchemy column.
+        """
+        column_info = sap.ColumnFieldInfo(column)
+        ret = column_info.as_dict()
+        ret["annotation"] = ret["annotation"].__name__
+        return ret
+
+    def _save_archive_dict(self, dct: dict[str, Any]):
+        logg.debug(f"archive dict: {dct}")
+
+        with open(self._archive_file, "w") as f:
+            json.dump(dct, f, indent=2)
 
     def _get_revision_filepath(self) -> Path:
         frame = inspect.currentframe()

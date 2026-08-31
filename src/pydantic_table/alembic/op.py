@@ -44,7 +44,22 @@ def create_table(
 def drop_table(table: Type[TableModel]):
     """
     Invoke alembic drop table based on provided TableModel schema.
+
+    If detect extra columns or missing columns i.e. any schema change,
+        archive table schema.
     """
+    sa_table = sap.Table(table, autoload_with=op.get_bind())
+    # TODO: mutual set difference
+    # TODO: detect any schema change in column info (changed default, changed nullability or primary)
+    model_has_new_columns = any(
+        col_name not in table.column_fields() for col_name in sa_table.c
+    )
+    model_is_missing_columns = any(
+        col_name not in sa_table.c for col_name in table.column_fields()
+    )
+    if model_has_new_columns or model_is_missing_columns:
+        Archive(table).archive_table_model(sa_table)
+
     op.drop_table(table.table_name())
 
 
@@ -83,7 +98,7 @@ def add_column(
     else:
         archive = Archive(table)
         try:
-            column_info = archive.get_column_info(name)
+            column_info = archive.read_column_info(name)
         except ArchiveException:
             raise PydanticTableAlembicException(
                 f"Column {name} not present in table {table.table_info()} or in archive! Cannot add."
