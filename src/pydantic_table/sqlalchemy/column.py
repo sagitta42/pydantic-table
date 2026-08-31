@@ -72,13 +72,22 @@ def Column(
 
 def ColumnFieldInfo(column: sa.Column) -> pt_field.ColumnFieldInfo:
     """
-    Translator from sa.Column to ColumnFieldInfo
+    Translator from sa.Column to ColumnFieldInfo.
+
+    Note that default=None in sa.Column means "no default" and not "default is null".
+    While in ColumnFieldInfo, default=None means "default is null", while PydanticUndefined means "no default".
+    Avoid the default= ketword argument to produce PydanticUndefined.
     """
     sa_type_engine = type(column.type)
+    kwargs_undefined = {}
+    if column.nullable or column.default is not None:
+        kwargs_undefined["default"] = column.default
     ret = pt_field.ColumnFieldInfo(
         annotation=ColumnType.from_sa_type_engine(sa_type_engine),
-        default=column.default,
+        # TODO: save/get description in table metadata 
+        # description=column.name,
         primary_key=column.primary_key,
         nullable=column.nullable,
+        **kwargs_undefined,
     )
     return ret
