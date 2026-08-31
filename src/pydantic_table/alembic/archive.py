@@ -19,9 +19,7 @@ SAVE_DATA = False
 
 
 class Archive:
-    def __init__(self, table: Type[TableModel]) -> None:
-        self.table = table
-
+    def __init__(self) -> None:
         self._revision_filepath = self._get_revision_filepath()
 
         versions = self._revision_filepath.parent
@@ -53,8 +51,21 @@ class Archive:
         archive_dict = {sa_table.name: table_dict}
         self._save_archive_dict(archive_dict)
 
+    def read_column_fields(self, table_name: str) -> dict[str, ColumnFieldInfo]:
+        """
+        Read table model from archive.
+
+        Return map of column field infos for each column name (i.e. TableModel.column_fields() content)
+        """
+        column_fields = self._check_and_load_file_content(content=table_name)
+        ret = {
+            column_name: self._build_column_info(column_info)
+            for column_name, column_info in column_fields.items()
+        }
+        return ret
+
     # TODO: multiple columns
-    def archive_column_info(self, column_name: str):
+    def archive_column_info(self, table: Type[TableModel], column_name: str):
         """
         Archive column information.
 
@@ -71,7 +82,7 @@ class Archive:
 
         engine = op.get_bind()
 
-        tb = sap.Table(self.table, autoload_with=engine)
+        tb = sap.Table(table, autoload_with=engine)
         sa_column = tb.c[column_name]
         archive_dict: dict[str, dict[str, Any]] = {
             column_name: {"info": self._build_column_info_dict(sa_column)}
@@ -88,27 +99,14 @@ class Archive:
         """
         Get column schema from archive
         """
-        if not self._archive_file.exists():
-            raise ArchiveException(f"Archive file {self._archive_file} not found!")
-
-        with open(self._archive_file) as f:
-            file_dict = json.load(f)
-
-        if not column in file_dict:
-            raise ArchiveException(
-                f"Column {column} does not exist in archive file {self._archive_file}!"
-            )
-
-        column_dict = file_dict[column]
+        column_dict = self._check_and_load_file_content(content=column)
 
         if not "info" in column_dict:
             raise ArchiveException(
                 f"Field 'info' not found for column {column} in archive file {self._archive_file}!"
             )
 
-        info_dict = column_dict["info"]
-        info_dict["annotation"] = eval(info_dict["annotation"])
-        ret = ColumnFieldInfo(**info_dict)
+        ret = self._build_column_info(column_dict["info"])
         return ret
 
     def _build_column_info_dict(self, column: sa.Column) -> dict[str, Any]:
@@ -120,11 +118,33 @@ class Archive:
         ret["annotation"] = ret["annotation"].__name__
         return ret
 
+    def _build_column_info(self, column_info: dict) -> ColumnFieldInfo:
+        info_dict = column_info.copy()
+
+        info_dict["annotation"] = eval(info_dict["annotation"])
+        ret = ColumnFieldInfo(**info_dict)
+        return ret
+
     def _save_archive_dict(self, dct: dict[str, Any]):
         logg.debug(f"archive dict: {dct}")
 
         with open(self._archive_file, "w") as f:
             json.dump(dct, f, indent=2)
+
+    def _check_and_load_file_content(self, content: str) -> dict:
+        if not self._archive_file.exists():
+            raise ArchiveException(f"Archive file {self._archive_file} not found!")
+
+        with open(self._archive_file) as f:
+            file_dict = json.load(f)
+
+        if not content in file_dict:
+            raise ArchiveException(
+                f"{content} does not exist in archive file {self._archive_file}!"
+            )
+
+        ret = file_dict[content]
+        return ret
 
     def _get_revision_filepath(self) -> Path:
         frame = inspect.currentframe()

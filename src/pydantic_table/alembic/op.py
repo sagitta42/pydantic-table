@@ -32,11 +32,21 @@ def create_table(
 
     Column names must correspond to TableModel field names.
     """
-    sa_columns = []
-    for name in columns:
-        column_info = table.column_fields()[name]
-        sa_col = sap.Column(name, column_info, foreign_key=foreign_keys.get(name, None))
-        sa_columns.append(sa_col)
+    archive = Archive()
+    # TODO: table rename
+    column_fields = (
+        archive.read_column_fields(table.table_name())
+        if archive.file_exists
+        else {
+            column_name: column_info
+            for column_name, column_info in table.column_fields().items()
+            if column_name in columns
+        }
+    )
+    sa_columns = [
+        sap.Column(name, column_info, foreign_key=foreign_keys.get(name, None))
+        for name, column_info in column_fields.items()
+    ]
 
     op.create_table(table.table_name(), *sa_columns)
 
@@ -58,7 +68,7 @@ def drop_table(table: Type[TableModel]):
         col_name not in sa_table.c for col_name in table.column_fields()
     )
     if model_has_new_columns or model_is_missing_columns:
-        Archive(table).archive_table_model(sa_table)
+        Archive().archive_table_model(sa_table)
 
     op.drop_table(table.table_name())
 
@@ -92,11 +102,11 @@ def add_column(
         - add given column data (use other columns for condition)
         - set column back to nullable
     """
-    # TODO: check archive for dropped columns backwards compatibility
+    # TODO: always read archived file if exists, even if column exists - could be other schema change
     if name in table.column_fields():
         column_info = table.column_fields()[name]
     else:
-        archive = Archive(table)
+        archive = Archive()
         try:
             column_info = archive.read_column_info(name)
         except ArchiveException:
@@ -149,7 +159,7 @@ def drop_column(table: Type[TableModel], name: str):
         (schema update removes column)
     """
     if name not in table.column_fields():
-        Archive(table).archive_column_info(name)
+        Archive().archive_column_info(table, name)
 
     op.drop_column(table.table_name(), name)
 
