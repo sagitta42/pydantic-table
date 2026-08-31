@@ -55,7 +55,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
         if not "exclude" in kwargs:
             kwargs["exclude"] = {}
         kwargs["exclude"] |= exclude_args
-        
+
         return self.model_dump(**kwargs)
 
     def get(self, column: str) -> Any:
@@ -67,8 +67,8 @@ class TableModel(BaseModel, metaclass=TableMeta):
         if column not in self.data_dump():
             raise PydanticTableColumnError(
                 f"Column {column} does not exist in {self.table_info()}!"
-                f"Schema columns: {list_as_str(self.column_dump().keys())}"
-                f"Extra columns: {list_as_str(self.extra_data.keys())}"
+                f" Schema columns: {list_as_str(self.column_dump().keys())}"
+                f" Extra columns: {list_as_str(self.extra_data.keys())}"
             )
         ret = self.data_dump()[column]
         return ret
@@ -88,6 +88,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = f"'{cls.table_name()}' ({cls.__name__})"
         return ret
 
+    # TODO: property like model_fields
     @classmethod
     def column_fields(cls) -> dict[str, ColumnFieldInfo]:
         """
@@ -128,13 +129,13 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
         for column_name, column_info in columns.items():
             if column_name not in data:
-                logg.debug(f"{column_name} column not in given data")
+                logg.debug(f"- column '{column_name}' missing in given data")
                 assert column_info.annotation is not None
                 dummy = column_info.annotation()
                 ret[column_name] = dummy
                 ret[InternalAttr.missing].append(column_name)
 
-        logg.debug(ret)
+        logg.debug(f"--> Catch missing columns: {ret}")
         return ret
 
     @model_validator(mode="before")
@@ -148,9 +149,10 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
         columns = cls.column_fields()
 
-        for column_name, column_value in data.items():
+        for column_name in data:
             if not column_name in columns:
-                logg.debug(f"{column_name} column not table schema")
-                ret[InternalAttr.extra][column_name] = column_value
+                logg.debug(f"- extra column '{column_name}' not in table")
+                ret[InternalAttr.extra][column_name] = ret.pop(column_name)
 
-        return data
+        logg.debug(f"--> Catch extra columns: {ret}")
+        return ret
