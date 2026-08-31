@@ -6,7 +6,7 @@ from alembic import op
 import sqlalchemy as sa
 from typing import Any, Type
 
-from pydantic_table.alembic.archive import archive_column
+from pydantic_table.alembic.archive import Archive
 from pydantic_table.alembic.exceptions import PydanticTableAlembicException
 from pydantic_table.logger import logg
 import pydantic_table.sqlalchemy as sap
@@ -114,7 +114,7 @@ def drop_column(table: Type[TableModel], name: str):
         (schema update removes column)
     """
     if name not in table.column_fields():
-        archive_column(table, name)
+        Archive(table).archive_column_info(name)
 
     op.drop_column(table.table_name(), name)
 
