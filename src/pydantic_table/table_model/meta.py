@@ -83,9 +83,7 @@ class TableMeta(type(BaseModel)):
         ret = {
             "__annotations__": {field_name.value: type(parameter)},
             field_name: Field(
-                default=parameter,
-                description=AttrDescription.from_attr(field_name),
-                exclude=True,
+                default=parameter, description=AttrDescription.from_attr(field_name)
             ),
         }
         return ret

@@ -31,6 +31,27 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = self.__dict__[InternalAttr.extra]
         return ret
 
+    def column_dump(self, **kwargs) -> dict[str, Any]:
+        """
+        Column dump.
+
+        Model dump of column present in row:
+            - exclude internal attributes (non-columns)
+            - exclude missing columns
+
+        Columns can be further excluded via exclude={name: True} in **kwargs.
+        Missing columns cannot be re-included with exclude={name:False}.
+        """
+        exclude_args = {key: True for key in InternalAttr}
+        exclude_args |= {col_name: True for col_name in self.missing_columns}
+
+        if not "exclude" in kwargs:
+            kwargs["exclude"] = {}
+            
+        kwargs["exclude"] |= exclude_args
+
+        return self.model_dump(**kwargs)
+
     def data_dump(self) -> dict[str, Any]:
         """
         Actual data stored in row including extra columns.
@@ -42,21 +63,6 @@ class TableModel(BaseModel, metaclass=TableMeta):
     def missing_columns(self) -> list[str]:
         ret = self.__dict__[InternalAttr.missing]
         return ret
-
-    def column_dump(self, **kwargs) -> dict[str, Any]:
-        """
-        Column dump.
-
-        Model dump of currently present columns i.e. missing columns ignored.
-        Extra columns can be excluded via kwargs.
-        Missing columns cannot be included i.e. kwargs will be overwritten.
-        """
-        exclude_args = {col_name: True for col_name in self.missing_columns}
-        if not "exclude" in kwargs:
-            kwargs["exclude"] = {}
-        kwargs["exclude"] |= exclude_args
-
-        return self.model_dump(**kwargs)
 
     def get(self, column: str) -> Any:
         """
@@ -100,7 +106,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
         ret = {
             field_name: field_info
             for field_name, field_info in cls.model_fields.items()
-            if not field_info.exclude
+            if not field_name in InternalAttr
         }
 
         return ret
