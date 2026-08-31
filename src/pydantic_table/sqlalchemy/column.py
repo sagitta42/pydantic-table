@@ -23,6 +23,8 @@ class SaColumnType(enum.Enum):
 
 class ColumnType(enum.Enum):
     FLOAT = float
+    String = str
+    Integer = int
 
     # <class 'sqlalchemy.sql.sqltypes.FLOAT'>
     @classmethod
