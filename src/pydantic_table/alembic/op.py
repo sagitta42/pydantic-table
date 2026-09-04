@@ -26,8 +26,7 @@ def create_table(
     Invoke alembic create table based on provided TableModel schema.
 
     primary_keys (list[str]): list of primary key column names
-    foreign_keys (dict[str, str]): dictionary mapping {column name: foreign key column information}
-        Format of foreign key is foreign_table.column
+    foreign_keys (dict[str, str]): dictionary mapping {"column_name": "foreign_table.column"}
 
     Column names must correspond to TableModel field names.
     """

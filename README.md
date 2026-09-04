@@ -1,9 +1,15 @@
 # pydantic-table
 
-Use pydantic model as single source of truth for SQLAlchemy table definition and alembic migrations.
+Use pydantic model as single source of truth for payload definition, SQLAlchemy table schema, and alembic migrations.
 
-```python
-pip install https://github.com/sagitta42/pydantic-table.git@v0.3.0
+```bash
+pip install poetiq
+```
+
+or for most recent developments
+
+```bash
+pip install https://github.com/sagitta42/pydantic-table.git
 ```
 
 ## `TableModel` and `ColumnField`
@@ -37,7 +43,7 @@ class ExampleTable(TableModel, table_name="examples"):
   - model field annotation = column data type
   - `TableModel.column_fields()` returns `dict[str, ColumnFieldInfo]`
   - `ColumnFieldInfo` is `FieldInfo` with extra properties `primary_key` and `nullable`
-  - `model_dump()` returns all fields including special internal fields - see [alembic][#alembic] section on the roles of `missing_columns__` and `extra_columns__`
+  - `model_dump()` returns all fields including special internal fields - see [alembic](#alembic) section on the roles of `missing_columns__` and `extra_columns__`
   - `column_dump()` returns actual columns
 
 - **One source of truth**:
@@ -56,7 +62,7 @@ class ExampleTable(TableModel, table_name="examples"):
     sa_table: sa.Table = Table(ExampleTable, autoload_with=op.get_bind())
     ```
 
-  - **adaptor** for `DeclarativeBase` from `sqlalchemy` via **BaseMeta** in `pydantic_table.sqlalchemy` - see [sqlalchemy][#sqlalchemy] section
+  - **adaptor** for `DeclarativeBase` from `sqlalchemy` via **BaseMeta** in `pydantic_table.sqlalchemy` - see [sqlalchemy](#sqlalchemy) section
 
     ```python
     class ExampleTableBase(Base, metaclass=BaseMeta, model=ExampleTable)
@@ -65,7 +71,7 @@ class ExampleTable(TableModel, table_name="examples"):
 - **Schema changes** easily tracked
 
   - update to `TableModel` child class is auto-reflected in payload and DB Base **at the same time**
-  - **backwards compatibility** via alembic adaptors in `pydantic_table.alembic.op`: `ExampleTable` can be updated directly by adding/removing column fields, followed by an add/drop column migration; previous migrations are not broken if `op.drop_column()` and `op.drop_table()` adaptors are used - see [alembic][#alembic] section
+  - **backwards compatibility** via alembic adaptors in `pydantic_table.alembic.op`: `ExampleTable` can be updated directly by adding/removing column fields, followed by an add/drop column migration; previous migrations are not broken if `op.drop_column()` and `op.drop_table()` adaptors are used - see [alembic](#alembic) section
 
 ## sqlalchemy
 
@@ -279,7 +285,7 @@ Here downgrade is possible even though information on properties of `"value"` co
 
 ### fallback to alembic op
 
-Easy fallback to standard alembic op by using `sap.Column` and `sap.Table` adaptors described in the [sqlalchemy][#sqlalchemy] section, and performing standard `op` operations "manually".
+Easy fallback to standard alembic op by using `sap.Column` and `sap.Table` adaptors described in the [sqlalchemy](#sqlalchemy) section, and performing standard `op` operations "manually".
 
 ## utils/validation
 
