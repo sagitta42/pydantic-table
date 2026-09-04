@@ -3,7 +3,7 @@ from typing import Any, Type
 from pydantic import BaseModel, Field
 
 from pydantic_table.table_model.exceptions import PydanticTableTypeError
-from pydantic_table.table_model.field import ColumnFieldInfo
+from pydantic_table.table_model.field import ColumnFieldInfo, ColumnField
 from pydantic_table.table_model.internal_attr import AttrDescription, InternalAttr
 
 
@@ -56,7 +56,7 @@ class TableMeta(type(BaseModel)):
 
             if not isinstance(field_info, ColumnFieldInfo):
                 raise PydanticTableTypeError(
-                    f"{cls.__name__}.{field_name} must be declared with {ColumnFieldInfo.__name__}(...), "
+                    f"{cls.__name__}.{field_name} must be declared with {ColumnField.__name__}(...), "
                     f"not Field() or a bare default (got {type(field_info).__name__})"
                 )
         return cls
