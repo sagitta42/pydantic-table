@@ -12,7 +12,7 @@ description = "Use pydantic model as single source of truth for payload definiti
 name = "pydantic-table"
 readme = "README.md"
 requires-python = ">=3.12"
-version = "0.3.0"
+version = "0.3.1"
 
 [tool.poetry]
 packages = [{include = "pydantic_table", from = "src"}]
