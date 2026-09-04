@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic_table.table_model.field import ColumnField
 from pydantic_table.table_model.model import TableModel
 
@@ -10,12 +12,12 @@ def test_pt2sa():
     class ExampleTable(TableModel, table_name="examples"):
         id: int = ColumnField(description="ID", primary_key=True)
         name: str = ColumnField(description="Name")
-        value: float = ColumnField(description="Value", nullable=True)
+        value: Optional[float] = ColumnField(description="Value", nullable=True)
 
-    column_info = ExampleTable.column_fields()["name"]
+    column_info = ExampleTable.column_fields()["value"]
     logg.debug(column_info)
 
-    sa_column = sap.Column("id", column_info)
+    sa_column = sap.Column("value", column_info)
     logg.debug(sa_column)
 
 def test_sa2pt():

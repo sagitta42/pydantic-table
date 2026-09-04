@@ -2,7 +2,7 @@ import enum
 from typing import Any, Type
 
 from sqlalchemy import Float, Integer, String
-from sqlalchemy.orm import DeclarativeBase, mapped_column
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm.decl_api import DeclarativeAttributeIntercept
 
 from pydantic_table.table_model.model import TableModel
@@ -47,7 +47,7 @@ class BaseMeta(DeclarativeAttributeIntercept):
                 )
 
             namespace[column_name] = mapped_column(
-                BaseFieldType.from_type(column_info.annotation),
+                BaseFieldType.from_type(column_info.get_type()),
                 nullable=column_info.nullable,
                 primary_key=column_info.primary_key,
             )

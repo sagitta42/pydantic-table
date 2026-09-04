@@ -3,7 +3,6 @@ from typing import Type
 
 import sqlalchemy as sa
 
-from pydantic_table import TableModel
 import pydantic_table.table_model.field as pt_field
 
 
@@ -34,25 +33,14 @@ class ColumnType(enum.Enum):
         return cls[t.__name__].value
 
 
-def get_column_sa_type(
-    column_info: pt_field.ColumnFieldInfo,
-) -> Type[sa.types.TypeEngine]:
-    """
-    Get sqlalchemy TypeEngine type of given field based on its annotation type.
-    """
-    assert column_info.annotation is not None
-    ret = SaColumnType.from_type(column_info.annotation)
-    return ret
-
-
 def Column(
     name: str, column_info: pt_field.ColumnFieldInfo, foreign_key: str | None = None
 ) -> sa.Column:
     foreign_key_args = []
     if foreign_key is not None:
         sa_foreign_key = sa.ForeignKey(
+            foreign_key,
             name=f"fk_{foreign_key.replace('.', '_')}",
-            column=foreign_key,
         )
         foreign_key_args.append(sa_foreign_key)
 
@@ -64,12 +52,12 @@ def Column(
 
     ret = sa.Column(
         name,
-        get_column_sa_type(column_info),
+        SaColumnType.from_type(column_info.get_type()),
+        *foreign_key_args,
         nullable=column_info.nullable,
         default=default,
         server_default=default,
         primary_key=column_info.primary_key,
-        *foreign_key_args,
     )
     return ret
 
@@ -88,7 +76,7 @@ def ColumnFieldInfo(column: sa.Column) -> pt_field.ColumnFieldInfo:
         kwargs_undefined["default"] = column.default
     ret = pt_field.ColumnFieldInfo(
         annotation=ColumnType.from_sa_type_engine(sa_type_engine),
-        # TODO: save/get description in table metadata 
+        # TODO: save/get description in table metadata
         # description=column.name,
         primary_key=column.primary_key,
         nullable=column.nullable,
