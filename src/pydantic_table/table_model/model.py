@@ -1,4 +1,4 @@
-from typing import Any, Self, Type
+from typing import Any, Self, Type, TypeVar
 
 from pydantic import BaseModel, model_validator
 
@@ -47,7 +47,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
         if not "exclude" in kwargs:
             kwargs["exclude"] = {}
-            
+
         kwargs["exclude"] |= exclude_args
 
         return self.model_dump(**kwargs)
@@ -162,3 +162,6 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
         logg.debug(f"--> Catch extra columns: {ret}")
         return ret
+
+
+T_TableModel = TypeVar("T_TableModel", bound=TableModel)

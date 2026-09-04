@@ -14,7 +14,7 @@ from pydantic_table.alembic.exceptions import (
 from pydantic_table.logger import logg
 import pydantic_table.sqlalchemy as sap
 
-from pydantic_table.table_model.model import TableModel
+from pydantic_table.table_model.model import T_TableModel, TableModel
 from pydantic_table.utils import dict_as_str
 
 
@@ -42,7 +42,7 @@ def create_table(
             )
     else:
         column_fields = table.column_fields()
-        
+
     sa_columns = [
         sap.Column(name, column_info, foreign_key=foreign_keys.get(name, None))
         for name, column_info in column_fields.items()
@@ -163,7 +163,7 @@ def drop_column(table: Type[TableModel], name: str):
     op.drop_column(table.table_name(), name)
 
 
-def insert(rows: TableModel | list[TableModel]):
+def insert(rows: T_TableModel | list[T_TableModel]):
     """
     Insert given row(s) to the table corresponding to its schema.
 
@@ -219,7 +219,7 @@ def delete_where(table: Type[TableModel], **kwargs):
     op.execute(tb.delete().where(condition))
 
 
-def deep_delete(rows: TableModel | list[TableModel]):
+def deep_delete(rows: T_TableModel | list[T_TableModel]):
     """
     Delete given row(s) from the table corresponding to its schema.
 
