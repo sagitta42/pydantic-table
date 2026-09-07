@@ -26,6 +26,7 @@ class ColumnType(enum.Enum):
     INTEGER = int
     String = str
     VARCHAR = str
+    DOUBLE_PRECISION = float
 
     # <class 'sqlalchemy.sql.sqltypes.FLOAT'>
     @classmethod
