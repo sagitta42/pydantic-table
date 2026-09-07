@@ -15,7 +15,7 @@ from pydantic_table.logger import logg
 import pydantic_table.sqlalchemy as sap
 
 from pydantic_table.table_model.model import T_TableModel, TableModel
-from pydantic_table.utils import dict_as_str
+from pydantic_table.utils import dict_as_str, list_as_str
 
 
 def create_table(
@@ -60,13 +60,21 @@ def drop_table(table: Type[TableModel]):
     sa_table = sap.Table(table, autoload_with=op.get_bind())
     # TODO: mutual set difference
     # TODO: detect any schema change in column info (changed default, changed nullability or primary)
-    model_has_new_columns = any(
-        col_name not in table.column_fields() for col_name in sa_table.c
-    )
-    model_is_missing_columns = any(
-        col_name not in sa_table.c for col_name in table.column_fields()
-    )
+    new_columns = [
+        col_name for col_name in sa_table.c.keys() if not col_name in table.column_fields()
+    ]
+    model_has_new_columns = len(new_columns) > 0
+    missing_columns = [
+        col_name for col_name in table.column_fields() if col_name not in sa_table.c.keys()
+    ]
+    model_is_missing_columns = len(missing_columns) > 0
     if model_has_new_columns or model_is_missing_columns:
+        logg.debug(
+            f"New columns (not in table, is in TableModel): {list_as_str(new_columns)}"
+        )
+        logg.debug(
+            f"Missing columns (in table, not in TableModel): {list_as_str(missing_columns)}"
+        )
         Archive().archive_table_model(sa_table)
 
     op.drop_table(table.table_name())
