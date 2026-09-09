@@ -14,6 +14,8 @@ pip install https://github.com/sagitta42/pydantic-table.git
 
 ## `TableModel` and `ColumnField`
 
+Note: annotation and description are required; missing annotation may result in crashes. In the future will be handled to provide an error at definition requiring annotation; currently need to check and make sure yourself.
+
 ```python
 # tables.py
 from pydantic_table import ColumnField, TableModel
