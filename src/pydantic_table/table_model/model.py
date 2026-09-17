@@ -136,9 +136,8 @@ class TableModel(BaseModel, metaclass=TableMeta):
         for column_name, column_info in columns.items():
             if column_name not in data:
                 logg.debug(f"- column '{column_name}' missing in given data")
-                assert column_info.annotation is not None
-                dummy = column_info.annotation()
-                ret[column_name] = dummy
+                dummy = column_info.get_type()
+                ret[column_name] = dummy()
                 ret[InternalAttr.missing].append(column_name)
 
         logg.debug(f"--> Catch missing columns: {ret}")
