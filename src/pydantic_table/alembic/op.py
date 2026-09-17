@@ -2,6 +2,8 @@
 op adaptors
 """
 
+import uuid
+
 from alembic import op
 import sqlalchemy as sa
 from typing import Any, Type
@@ -61,11 +63,15 @@ def drop_table(table: Type[TableModel]):
     # TODO: mutual set difference
     # TODO: detect any schema change in column info (changed default, changed nullability or primary)
     new_columns = [
-        col_name for col_name in sa_table.c.keys() if not col_name in table.column_fields()
+        col_name
+        for col_name in sa_table.c.keys()
+        if not col_name in table.column_fields()
     ]
     model_has_new_columns = len(new_columns) > 0
     missing_columns = [
-        col_name for col_name in table.column_fields() if col_name not in sa_table.c.keys()
+        col_name
+        for col_name in table.column_fields()
+        if col_name not in sa_table.c.keys()
     ]
     model_is_missing_columns = len(missing_columns) > 0
     if model_has_new_columns or model_is_missing_columns:
@@ -176,6 +182,7 @@ def insert(rows: T_TableModel | list[T_TableModel]):
 
     Read table based on table name.
     Invoke alembic execute() of table insert() with model dump.
+    Convert UUID type data into string if SQLite driver is used.
 
     Account for backwards compatibility with added columns or dropped columns.
 
@@ -191,15 +198,23 @@ def insert(rows: T_TableModel | list[T_TableModel]):
     """
     row_list = rows if isinstance(rows, list) else [rows]
     for row in row_list:
-        table = sap.Table(row.table, autoload_with=op.get_bind())
+        engine = op.get_bind()
+        table = sap.Table(row.table, autoload_with=engine)
 
         for col_name in row.missing_columns:
             if col_name in table.c:
+                # TODO: #12 do not register as missing if has default / add with default during migration
                 raise PydanticTableAlembicException(
                     f"Row given for table {row.table_name()} is missing column {col_name}!"
                 )
 
         data = row.column_dump()
+
+        if engine.dialect.name == "sqlite":
+            for col, val in data.items():
+                if isinstance(val, uuid.UUID):
+                    data[col] = str(val)
+
         logg.debug(f"Inserting data - column dump: {data}")
         data = {col: val for col, val in data.items() if col in table.c}
         logg.debug(f"Inserting data - only columns in table: {data}")

@@ -134,6 +134,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
         columns = cls.column_fields()
 
         for column_name, column_info in columns.items():
+            # TODO: #12 do not register as missing if has default / add with default during migration
             if column_name not in data:
                 logg.debug(f"- column '{column_name}' missing in given data")
                 dummy = column_info.get_type()
