@@ -1,6 +1,6 @@
 [project]
 authors = [
-  {name = "mariia", email = "mariia.redchuk@iconservizi.com"},
+  {name = "sagitta42", email = "mariia.redchuk@gmail.com"},
 ]
 dependencies = [
   "pydantic (>=2.13.4,<3.0.0)",
