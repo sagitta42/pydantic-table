@@ -1,3 +1,4 @@
+from types import UnionType
 from typing import Any, Union, get_args, get_origin
 
 from pydantic import Field
@@ -49,14 +50,14 @@ class ColumnFieldInfo(FieldInfo):  # type: ignore[misc]
         """
         # TODO: validator
         assert self.annotation is not None
-        if get_origin(self.annotation) is Union:
+        if get_origin(self.annotation) in [Union, UnionType]:
             types = get_args(self.annotation)
             real_types = [tp for tp in types if not tp is type(None)]
             # TODO: validator
             assert len(real_types) == 1
             return real_types[0]
         return self.annotation
-    
+
     @classmethod
     def from_field_info(
         cls, field_info: FieldInfo, *, primary_key: bool, nullable: bool
