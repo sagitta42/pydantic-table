@@ -125,7 +125,7 @@ class TableModel(BaseModel, metaclass=TableMeta):
     @model_validator(mode="before")
     def catch_missing(cls, data):
         """
-        Catch missing columns and set dummy values.
+        Catch missing columns and set dummy or default values.
         Register missing columns to be ignored in column dump.
         """
         ret = data.copy()
@@ -134,9 +134,10 @@ class TableModel(BaseModel, metaclass=TableMeta):
         columns = cls.column_fields()
 
         for column_name, column_info in columns.items():
-            # TODO: #12 do not register as missing if has default / add with default during migration
-            if column_name not in data:
-                logg.debug(f"- column '{column_name}' missing in given data")
+            if column_name not in data and column_info.is_required():
+                logg.debug(
+                    f"- column '{column_name}' missing in given data and has no default"
+                )
                 dummy = column_info.get_type()
                 ret[column_name] = dummy()
                 ret[InternalAttr.missing].append(column_name)
