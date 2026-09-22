@@ -1,3 +1,4 @@
+import datetime
 import enum
 from typing import Optional, Type
 
@@ -29,6 +30,7 @@ class ColumnType(enum.Enum):
     String = str
     VARCHAR = str
     DOUBLE_PRECISION = float
+    DATE = datetime.date
 
     # <class 'sqlalchemy.sql.sqltypes.FLOAT'>
     @classmethod
