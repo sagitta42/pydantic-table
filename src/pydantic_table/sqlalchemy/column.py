@@ -14,6 +14,8 @@ class SaColumnType(enum.Enum):
     int = sa.Integer
     float = sa.Float
     str = sa.String
+    date = sa.Date
+    bool = sa.Boolean
 
     @classmethod
     def from_type(cls, t: type):
