@@ -1,3 +1,4 @@
+from datetime import datetime, date
 from typing import Any, Self, Type, TypeVar
 
 from pydantic import BaseModel, model_validator
@@ -138,8 +139,11 @@ class TableModel(BaseModel, metaclass=TableMeta):
                 logg.debug(
                     f"- column '{column_name}' missing in given data and has no default"
                 )
-                dummy = column_info.get_type()
-                ret[column_name] = dummy()
+                col_type = column_info.get_type()
+                dummy_value = (
+                    datetime.now().date() if col_type is date else col_type()
+                )
+                ret[column_name] = dummy_value
                 ret[InternalAttr.missing].append(column_name)
 
         logg.debug(f"--> Catch missing columns: {ret}")
