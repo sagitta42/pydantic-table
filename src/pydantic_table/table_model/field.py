@@ -9,13 +9,18 @@ from pydantic_core import PydanticUndefined
 
 
 class ColumnFieldInfo(FieldInfo):  # type: ignore[misc]
-    __slots__ = ("primary_key", "nullable")
+    __slots__ = "primary_key"
 
-    def __init__(self, primary_key: bool, nullable: bool, **kwargs: Any) -> None:
+    def __init__(self, primary_key: bool, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
         self.primary_key: bool = primary_key
-        self.nullable: bool = nullable
+
+    @property
+    def nullable(self) -> bool:
+        types = self._get_types()
+        null_types = [tp for tp in types if tp is type(None)]
+        return len(null_types) > 0
 
     def as_dict(self) -> dict[str, Any]:
         """
@@ -48,32 +53,30 @@ class ColumnFieldInfo(FieldInfo):  # type: ignore[misc]
 
         Extract real type from type union to cover Optional[type] case.
         """
+        types = self._get_types()
+        real_types = [tp for tp in types if not tp is type(None)]
+        # TODO: validator
+        assert len(real_types) == 1
+        return real_types[0]
+
+    def _get_types(self) -> list[type]:
         # TODO: validator
         assert self.annotation is not None
         if get_origin(self.annotation) in [Union, UnionType]:
-            types = get_args(self.annotation)
-            real_types = [tp for tp in types if not tp is type(None)]
-            # TODO: validator
-            assert len(real_types) == 1
-            return real_types[0]
-        return self.annotation
+            return get_args(self.annotation)
+        return [self.annotation]
 
     @classmethod
     def from_field_info(
-        cls, field_info: FieldInfo, *, primary_key: bool, nullable: bool
+        cls, field_info: FieldInfo, *, primary_key: bool
     ) -> "ColumnFieldInfo":
         new = cls.__new__(cls)
         for slot in FieldInfo.__slots__:
             setattr(new, slot, getattr(field_info, slot))
         new.primary_key = primary_key
-        new.nullable = nullable
         return new
 
 
-def ColumnField(
-    *, primary_key: bool = False, nullable: bool = False, **kwargs: Any
-) -> Any:
+def ColumnField(*, primary_key: bool = False, **kwargs: Any) -> Any:
     field_info = Field(**kwargs)  # normal pydantic validation of all args
-    return ColumnFieldInfo.from_field_info(
-        field_info, primary_key=primary_key, nullable=nullable
-    )
+    return ColumnFieldInfo.from_field_info(field_info, primary_key=primary_key)

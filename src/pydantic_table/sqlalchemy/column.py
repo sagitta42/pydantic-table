@@ -1,5 +1,5 @@
 import enum
-from typing import Type
+from typing import Optional, Type
 
 import sqlalchemy as sa
 
@@ -72,15 +72,18 @@ def ColumnFieldInfo(column: sa.Column) -> pt_field.ColumnFieldInfo:
     Avoid the default= ketword argument to produce PydanticUndefined.
     """
     sa_type_engine = type(column.type)
-    kwargs_undefined = {}
-    if column.nullable or column.default is not None:
-        kwargs_undefined["default"] = column.default
+    column_type = ColumnType.from_sa_type_engine(sa_type_engine)
+    annotation = Optional[column_type] if column.nullable else column_type
+    kwargs = {}
+    # TODO: does SQLAlchemy differentiate between default=None (nullable) and "default undefined"
+    if column.default is not None:
+        kwargs["default"] = column.default
+
     ret = pt_field.ColumnFieldInfo(
-        annotation=ColumnType.from_sa_type_engine(sa_type_engine),
+        annotation=annotation,
         # TODO: save/get description in table metadata
         # description=column.name,
         primary_key=column.primary_key,
-        nullable=column.nullable,
-        **kwargs_undefined,
+        **kwargs,
     )
     return ret

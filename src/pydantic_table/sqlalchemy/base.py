@@ -25,7 +25,7 @@ class BaseMeta(DeclarativeAttributeIntercept):
     Translates TableModel field:
         - table_name_ --> __tablename__
         - annotation -> sqlalchemy type (Integer, Float, String)
-        - default=None -> nullable=True
+        - nullable (allows None) -> nullable=True
     """
 
     def __new__(

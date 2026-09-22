@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy.orm import DeclarativeBase
 from pydantic import Field
 
@@ -13,7 +15,7 @@ class Base(DeclarativeBase):
 class ExampleTable(TableModel, table_name="examples"):
     id: int = ColumnField(description="ID", primary_key=True)
     name: str = ColumnField(description="Name")
-    value: float = ColumnField(description="Value", nullable=True)
+    value: Optional[float] = ColumnField(description="Nullable value")
 
 
 class ExampleTableBase(Base, metaclass=BaseMeta, model=ExampleTable):

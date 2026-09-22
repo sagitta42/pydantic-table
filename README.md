@@ -14,25 +14,29 @@ pip install https://github.com/sagitta42/pydantic-table.git
 
 ## `TableModel` and `ColumnField`
 
-Note: annotation and description are required; missing annotation may result in crashes. In the future will be handled to provide an error at definition requiring annotation; currently need to check and make sure yourself.
+- annotation and description are required; missing annotation may result in crashes. In the future will be handled to provide an error at definition requiring annotation; currently need to check and make sure yourself
+- column nullability is inferred from annotation "containing" null (`Optional` or `type | None` etc.)
 
 ```python
 # tables.py
+from typing import Optional
 from pydantic_table import ColumnField, TableModel
 
 class ExampleTable(TableModel, table_name="examples"):
     id: int = ColumnField(description="ID", primary_key=True)
     name: str = ColumnField(description="Name")
-    value: float = ColumnField(description="Value", nullable=True)    
+    value: Optional[float] = ColumnField(description="Value")    
 ```
 
 ```python
 >>> ExampleTable.column_fields()
 {
- 'id': ColumnFieldInfo(annotation=int, required=True, primary_key=True, nullable=False),
- 'name': ColumnFieldInfo(annotation=str, required=True, primary_key=False, nullable=False),
- 'value': ColumnFieldInfo(annotation=float, required=True, primary_key=False, nullable=True)
+ 'id': ColumnFieldInfo(annotation=int, required=True, primary_key=True),
+ 'name': ColumnFieldInfo(annotation=str, required=True, primary_key=False),
+ 'value': ColumnFieldInfo(annotation=float, required=False, primary_key=False)
 }
+>>> ExampleTable.column_fields()["value"].nullable
+True
 >>> row = ExampleTable(id=42, name="Alice", value=1.618)
 >>> row.model_dump()
 {'table_name__': 'examples', 'missing_columns__': [], 'extra_columns__': {'new_column': 'foo'}, 'id': 42, 'name': 'Alice', 'value': 1.618}
@@ -44,7 +48,7 @@ class ExampleTable(TableModel, table_name="examples"):
   - model field name = column name
   - model field annotation = column data type
   - `TableModel.column_fields()` returns `dict[str, ColumnFieldInfo]`
-  - `ColumnFieldInfo` is `FieldInfo` with extra properties `primary_key` and `nullable`
+  - `ColumnFieldInfo` is `FieldInfo` with extra property `primary_key`
   - `model_dump()` returns all fields including special internal fields - see [alembic](#alembic) section on the roles of `missing_columns__` and `extra_columns__`
   - `column_dump()` returns actual columns
 
@@ -283,7 +287,7 @@ def downgrade() -> None:
 
 Backwards compatibility:
 
-Here downgrade is possible even though information on properties of `"value"` column such as primary key, nullable etc. are not present in `ExampleTable` anymore because at `drop_column()` its absence will be detected by `opp`, and an archive of column field info will be saved in the revision archive, similar to deleting table.
+Here downgrade is possible even though information on properties of `"value"` column are not present in `ExampleTable` anymore because at `drop_column()` its absence will be detected by `opp`, and an archive of column field info will be saved in the revision archive, similar to deleting table.
 
 ### fallback to alembic op
 
