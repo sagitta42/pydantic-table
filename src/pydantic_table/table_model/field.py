@@ -9,7 +9,7 @@ from pydantic_core import PydanticUndefined
 
 
 class ColumnFieldInfo(FieldInfo):  # type: ignore[misc]
-    __slots__ = "primary_key"
+    __slots__ = ("primary_key",)
 
     def __init__(self, primary_key: bool, **kwargs: Any) -> None:
         super().__init__(**kwargs)
