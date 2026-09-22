@@ -269,7 +269,7 @@ def _get_condition(tb: sa.Table, **kwargs) -> sa.ColumnElement[bool]:
         *[
             (
                 tb.c[column].in_(value)
-                if isinstance(value, Iterable)
+                if isinstance(value, Iterable) and not isinstance(value, str)
                 else tb.c[column] == value
             )
             for column, value in kwargs.items()
