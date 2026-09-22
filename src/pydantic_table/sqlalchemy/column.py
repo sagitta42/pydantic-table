@@ -47,19 +47,20 @@ def Column(
         )
         foreign_key_args.append(sa_foreign_key)
 
-    default = (
-        None
-        if column_info.is_required() or column_info.default is None
-        else column_info.default
+    default = None if column_info.is_required() else column_info.default
+
+    col_type = column_info.get_type()
+    server_default = (
+        sa.true() if default else sa.false() if col_type is bool else default
     )
 
     ret = sa.Column(
         name,
-        SaColumnType.from_type(column_info.get_type()),
+        SaColumnType.from_type(col_type),
         *foreign_key_args,
         nullable=column_info.nullable,
         default=default,
-        server_default=default,
+        server_default=server_default,
         primary_key=column_info.primary_key,
     )
     return ret
