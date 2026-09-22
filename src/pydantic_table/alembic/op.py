@@ -6,7 +6,7 @@ import uuid
 
 from alembic import op
 import sqlalchemy as sa
-from typing import Any, Type
+from typing import Any, Iterable, Type
 
 from pydantic_table.alembic.archive import Archive
 from pydantic_table.alembic.exceptions import (
@@ -258,6 +258,21 @@ def deep_delete(rows: T_TableModel | list[T_TableModel]):
 
 
 def _get_condition(tb: sa.Table, **kwargs) -> sa.ColumnElement[bool]:
+    """
+    Get condition based on kwargs.
+
+    Kwargs format: key=value or key=list[values]
+    And condition on all kwargs.
+    """
     logg.debug(f"Condition: {dict_as_str(kwargs)}")
-    condition = sa.and_(*[tb.c[column] == value for column, value in kwargs.items()])
+    condition = sa.and_(
+        *[
+            (
+                tb.c[column].in_(value)
+                if isinstance(value, Iterable)
+                else tb.c[column] == value
+            )
+            for column, value in kwargs.items()
+        ]
+    )
     return condition
