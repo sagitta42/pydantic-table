@@ -197,13 +197,12 @@ def insert(rows: T_TableModel | list[T_TableModel]):
         - if not present in table, raise error (non-existing columns were given)
     """
     row_list = rows if isinstance(rows, list) else [rows]
-    for row in row_list:
-        engine = op.get_bind()
-        table = sap.Table(row.table, autoload_with=engine)
+    engine = op.get_bind()
+    table = sap.Table(row_list[0].table, autoload_with=engine)
 
+    for row in row_list:
         for col_name in row.missing_columns:
             if col_name in table.c:
-                # TODO: #12 do not register as missing if has default / add with default during migration
                 raise PydanticTableAlembicException(
                     f"Row given for table {row.table_name()} is missing column {col_name}!"
                 )
