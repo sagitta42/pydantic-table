@@ -17,7 +17,7 @@ from pydantic_table.logger import logg
 import pydantic_table.sqlalchemy as sap
 
 from pydantic_table.table_model.model import T_TableModel, TableModel
-from pydantic_table.utils import dict_as_str, list_as_str
+from pydantic_table.utils import dict_as_str, handle_data_uuid, list_as_str
 
 
 def create_table(
@@ -126,7 +126,10 @@ def add_column(
     else:
         column_info = table.column_fields()[name]
 
-    sa_column = sap.Column(name, column_info, foreign_key=foreign_key)
+    conn = op.get_bind()
+    sa_column = sap.Column(
+        name, column_info, foreign_key=foreign_key, dialect=conn.dialect.name
+    )
 
     logg.debug(f"Adding column - column info: {column_info}")
     logg.debug(
@@ -142,19 +145,26 @@ def add_column(
             )
 
         sa_column.nullable = True
-        op.add_column(table.table_name(), sa_column)
-        for row in data_list:
-            logg.debug(f"Adding data row - {row}")
-            logg.debug(f"Column dump - {row.column_dump()}")
-            logg.debug(f"Data dump - {row.data_dump()}")
-            update_where(
-                table,
-                values={name: row.get(name)},
-                **row.column_dump(exclude={name: True}),
-            )
         # op.alter_column(table.table_name(), name, nullable=False) - error
         with op.batch_alter_table(table.table_name()) as batch_op:
+            batch_op.add_column(sa_column)
+
+        condition_cols = (
+            data_list[0].primary_keys() or data_list[0].column_fields().keys()
+        )
+        logg.debug(f"Condition columns: {condition_cols}")
+        for row in data_list:
+            logg.debug(f"Adding data row - {row}")
+            row_data = row.column_dump()
+            row_data = handle_data_uuid(row_data, op.get_bind())
+            logg.debug(f"Column dump - {row_data}")
+            condition_data = {col: row_data[col] for col in condition_cols}
+
+            update_where(table, values={name: row_data.pop(name)}, **condition_data)
+
+        with op.batch_alter_table(table.table_name()) as batch_op:
             batch_op.alter_column(name, nullable=False)
+
         return
 
     op.add_column(
@@ -208,11 +218,7 @@ def insert(rows: T_TableModel | list[T_TableModel]):
                 )
 
         data = row.column_dump()
-
-        if engine.dialect.name == "sqlite":
-            for col, val in data.items():
-                if isinstance(val, uuid.UUID):
-                    data[col] = str(val)
+        data = handle_data_uuid(data, engine)
 
         logg.debug(f"Inserting data - column dump: {data}")
         data = {col: val for col, val in data.items() if col in table.c}

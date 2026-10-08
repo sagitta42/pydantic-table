@@ -53,11 +53,11 @@ class TableModel(BaseModel, metaclass=TableMeta):
 
         return self.model_dump(**kwargs)
 
-    def data_dump(self) -> dict[str, Any]:
+    def data_dump(self, **kwargs) -> dict[str, Any]:
         """
         Actual data stored in row including extra columns.
         """
-        ret = self.column_dump() | self.extra_data
+        ret = self.column_dump(**kwargs) | self.extra_data
         return ret
 
     @property
@@ -110,6 +110,15 @@ class TableModel(BaseModel, metaclass=TableMeta):
             if not field_name in InternalAttr
         }
 
+        return ret
+
+    @classmethod
+    def primary_keys(cls) -> list[str] | None:
+        ret = [
+            col_name
+            for col_name, col_info in cls.column_fields().items()
+            if col_info.primary_key
+        ]
         return ret
 
     @model_validator(mode="before")

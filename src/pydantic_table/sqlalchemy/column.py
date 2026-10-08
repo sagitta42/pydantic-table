@@ -1,6 +1,7 @@
 import datetime
 import enum
 from typing import Optional, Type
+from uuid import UUID
 
 import sqlalchemy as sa
 
@@ -17,9 +18,13 @@ class SaColumnType(enum.Enum):
     str = sa.String
     date = sa.Date
     bool = sa.Boolean
+    UUID = sa.Uuid
 
     @classmethod
-    def from_type(cls, t: type):
+    def from_type(cls, t: type, dialect: str | None = None):
+        if t is UUID and dialect == "sqlite":
+            return sa.String
+
         return cls[t.__name__].value
 
 
@@ -39,7 +44,10 @@ class ColumnType(enum.Enum):
 
 
 def Column(
-    name: str, column_info: pt_field.ColumnFieldInfo, foreign_key: str | None = None
+    name: str,
+    column_info: pt_field.ColumnFieldInfo,
+    foreign_key: str | None = None,
+    dialect: str | None = None,
 ) -> sa.Column:
     foreign_key_args = []
     if foreign_key is not None:
@@ -58,7 +66,7 @@ def Column(
 
     ret = sa.Column(
         name,
-        SaColumnType.from_type(col_type),
+        SaColumnType.from_type(col_type, dialect),
         *foreign_key_args,
         nullable=column_info.nullable,
         default=default,
