@@ -141,7 +141,9 @@ class TableModel(BaseModel, metaclass=TableMeta):
                 )
                 col_type = column_info.get_type()
                 dummy_value = (
-                    datetime.now().date() if col_type is date else col_type()
+                    datetime.now().date()
+                    if col_type is date or col_type is datetime
+                    else col_type()
                 )
                 ret[column_name] = dummy_value
                 ret[InternalAttr.missing].append(column_name)
