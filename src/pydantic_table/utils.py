@@ -22,8 +22,11 @@ def dict_as_str(dct: dict) -> str:
 def handle_data_uuid(data: dict[str, Any], engine: Connection) -> dict[str, Any]:
     ret = {}
 
-    if engine.dialect.name == "sqlite":
-        for col, val in data.items():
-            ret[col] = str(val) if isinstance(val, uuid.UUID) else val
+    for col, val in data.items():
+        ret[col] = (
+            str(val)
+            if isinstance(val, uuid.UUID) and engine.dialect.name == "sqlite"
+            else val
+        )
 
     return ret
