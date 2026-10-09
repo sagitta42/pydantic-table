@@ -5,6 +5,7 @@ from uuid import UUID
 
 import sqlalchemy as sa
 
+from pydantic_table.logger import logg
 import pydantic_table.table_model.field as pt_field
 
 
@@ -28,7 +29,8 @@ class SaColumnType(enum.Enum):
             if dialect == "sqlite":
                 return sa.String
             if dialect == "mysql":
-                return sa.CHAR(36)
+                return sa.Uuid().with_variant(sa.CHAR(36), "mysql")
+                # return sa.CHAR(36)
 
         return cls[t.__name__].value
 
@@ -69,9 +71,12 @@ def Column(
         sa.true() if default else sa.false() if col_type is bool else default
     )
 
+    sa_col_type = SaColumnType.from_type(col_type, dialect)
+    logg.debug(f"{dialect} - Col type: {col_type} -> SA col type {repr(sa_col_type)}")
+
     ret = sa.Column(
         name,
-        SaColumnType.from_type(col_type, dialect),
+        sa_col_type,
         *foreign_key_args,
         nullable=column_info.nullable,
         default=default,

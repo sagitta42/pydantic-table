@@ -2,8 +2,6 @@
 op adaptors
 """
 
-import uuid
-
 from alembic import op
 import sqlalchemy as sa
 from typing import Any, Iterable, Type
@@ -176,7 +174,7 @@ def add_column(
         return
 
     op.add_column(
-        table.table_name(), sap.Column(name, column_info, foreign_key=foreign_key)
+        table.table_name(), sap.Column(name, column_info, foreign_key=foreign_key, dialect=conn.dialect.name)
     )
 
 
