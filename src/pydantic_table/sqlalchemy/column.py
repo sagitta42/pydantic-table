@@ -22,8 +22,11 @@ class SaColumnType(enum.Enum):
 
     @classmethod
     def from_type(cls, t: type, dialect: str | None = None):
-        if t is UUID and dialect == "sqlite":
-            return sa.String
+        if t is UUID:
+            if dialect == "sqlite":
+                return sa.String
+            if dialect == "mysql":
+                return sa.CHAR(36)
 
         return cls[t.__name__].value
 
