@@ -144,11 +144,18 @@ def add_column(
                 f"Either provide data to add, or a default; or make column nullable"
             )
 
+        logg.info(
+            f"Adding new non-nullable column {name}: add as nullable -> add data -> set as non-nullable",
+            header=True,
+        )
+
+        logg.info("...adding (nullable) column")
         sa_column.nullable = True
         # op.alter_column(table.table_name(), name, nullable=False) - error
         with op.batch_alter_table(table.table_name()) as batch_op:
             batch_op.add_column(sa_column)
 
+        logg.info("...adding data")
         condition_cols = (
             data_list[0].primary_keys() or data_list[0].column_fields().keys()
         )
@@ -162,8 +169,9 @@ def add_column(
 
             update_where(table, values={name: row_data.pop(name)}, **condition_data)
 
+        logg.info("...changing column to nullable=false")
         with op.batch_alter_table(table.table_name()) as batch_op:
-            batch_op.alter_column(name, nullable=False)
+            batch_op.alter_column(name, nullable=False, existing_type=sa_column.type)
 
         return
 
