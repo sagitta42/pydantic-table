@@ -1,5 +1,6 @@
 from datetime import datetime, date
 from typing import Any, Self, Type, TypeVar
+import uuid
 
 from pydantic import BaseModel, model_validator
 
@@ -149,11 +150,13 @@ class TableModel(BaseModel, metaclass=TableMeta):
                     f"- column '{column_name}' missing in given data and has no default"
                 )
                 col_type = column_info.get_type()
-                dummy_value = (
-                    datetime.now().date()
-                    if col_type is date or col_type is datetime
-                    else col_type()
-                )
+                if col_type is date or col_type is datetime:
+                    dummy_value = datetime.now().date()
+                elif col_type is uuid.UUID:
+                    dummy_value = uuid.uuid4()
+                else:
+                    dummy_value = col_type()
+
                 ret[column_name] = dummy_value
                 ret[InternalAttr.missing].append(column_name)
 
