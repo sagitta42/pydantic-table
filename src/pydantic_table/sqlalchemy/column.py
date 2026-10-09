@@ -17,8 +17,10 @@ class SaColumnType(enum.Enum):
     float = sa.Float
     str = sa.String
     date = sa.Date
+    datetime = sa.DateTime
     bool = sa.Boolean
     UUID = sa.Uuid
+    dict = sa.JSON
 
     @classmethod
     def from_type(cls, t: type, dialect: str | None = None):
