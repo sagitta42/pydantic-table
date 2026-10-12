@@ -173,9 +173,12 @@ def add_column(
 
         return
 
-    op.add_column(
-        table.table_name(), sap.Column(name, column_info, foreign_key=foreign_key, dialect=conn.dialect.name)
-    )
+    with op.batch_alter_table(table.table_name()) as batch_op:
+        batch_op.add_column(
+            sap.Column(
+                name, column_info, foreign_key=foreign_key, dialect=conn.dialect.name
+            )
+        )
 
 
 def drop_column(table: Type[TableModel], name: str):
