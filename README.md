@@ -3,7 +3,7 @@
 Use pydantic model as single source of truth for payload definition, SQLAlchemy table schema, and alembic migrations.
 
 ```bash
-pip install poetiq
+pip install pydantic-table
 ```
 
 or for most recent developments
