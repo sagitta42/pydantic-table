@@ -1,6 +1,8 @@
-from typing import Any, Type
+from typing import Any, Type, dataclass_transform
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic._internal._model_construction import ModelMetaclass, NoInitField
+from pydantic.fields import PrivateAttr
 
 from pydantic_table.table_model.exceptions import PydanticTableTypeError
 from pydantic_table.table_model.field import ColumnFieldInfo, ColumnField
@@ -15,8 +17,8 @@ def nested_merge(first: dict, second: dict) -> dict:
             first[key] = b_val
     return first
 
-
-class TableMeta(type(BaseModel)):
+@dataclass_transform(kw_only_default=True, field_specifiers=(ColumnField, Field, PrivateAttr, NoInitField))
+class TableMeta(ModelMetaclass):
     """
     Metaclass for TableModel creation.
 
