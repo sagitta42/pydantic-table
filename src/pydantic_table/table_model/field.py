@@ -1,8 +1,8 @@
 from types import UnionType
-from typing import Any, Union, get_args, get_origin
+from typing import Any, Union, Unpack, get_args, get_origin
 
 from pydantic import Field
-from pydantic.fields import FieldInfo
+from pydantic.fields import _FieldInfoInputs, FieldInfo
 from pydantic_core import PydanticUndefined
 
 # from pydantic.fields import _FieldInfoInputs,  _FieldInfoAsDict
@@ -77,6 +77,8 @@ class ColumnFieldInfo(FieldInfo):  # type: ignore[misc]
         return new
 
 
-def ColumnField(*, primary_key: bool = False, **kwargs: Any) -> Any:
-    field_info = Field(**kwargs)  # normal pydantic validation of all args
+def ColumnField(
+    *, primary_key: bool = False, **kwargs: Unpack[_FieldInfoInputs]
+) -> Any:
+    field_info = Field(**kwargs)
     return ColumnFieldInfo.from_field_info(field_info, primary_key=primary_key)
