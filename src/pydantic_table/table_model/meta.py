@@ -1,9 +1,11 @@
+import annotationlib
 from typing import Any, Type, dataclass_transform
 
 from pydantic import Field
 from pydantic._internal._model_construction import ModelMetaclass, NoInitField
 from pydantic.fields import PrivateAttr
 
+from pydantic_table.logger import logg
 from pydantic_table.table_model.exceptions import PydanticTableTypeError
 from pydantic_table.table_model.field import ColumnFieldInfo, ColumnField
 from pydantic_table.table_model.internal_attr import AttrDescription, InternalAttr
@@ -17,7 +19,11 @@ def nested_merge(first: dict, second: dict) -> dict:
             first[key] = b_val
     return first
 
-@dataclass_transform(kw_only_default=True, field_specifiers=(ColumnField, Field, PrivateAttr, NoInitField))
+
+@dataclass_transform(
+    kw_only_default=True,
+    field_specifiers=(ColumnField, Field, PrivateAttr, NoInitField),
+)
 class TableMeta(ModelMetaclass):
     """
     Metaclass for TableModel creation.
@@ -35,7 +41,13 @@ class TableMeta(ModelMetaclass):
         table_name: str = "",
         **kwds: Any,
     ):
-        namespace.setdefault("__annotations__", {})
+        # python3.14 bugfix: do not set namespace annotations default to empty dict
+        # produces a bug in python3.14 due to PEP 649 - Deferred Evaluation Of Annotations Using Descriptors
+        if "__annotations__" not in namespace:
+            annotate = namespace.get("__annotate_func__")
+
+            if annotate is not None:
+                namespace["__annotations__"] = annotate(annotationlib.Format.VALUE)
 
         # TODO: figure out if better to use private attributes and how
         #  cls.__dict__.keys()
@@ -46,10 +58,12 @@ class TableMeta(ModelMetaclass):
         #         "__pydantic_core_schema__",
         #     ]
         # )
+
         mcs._add_field_namespace_info(namespace, InternalAttr.table_name, table_name)
         mcs._add_field_namespace_info(namespace, InternalAttr.missing, [])
         mcs._add_field_namespace_info(namespace, InternalAttr.extra, {})
 
+        logg.debug(namespace)
         cls = super().__new__(mcs, name, bases, namespace, **kwds)
 
         for field_name, field_info in getattr(cls, "__pydantic_fields__", {}).items():
