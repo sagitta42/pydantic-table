@@ -1,5 +1,9 @@
 from typing import Optional
 
+from sqlalchemy.orm import DeclarativeBase
+
+from examples.models import ExampleTable
+from pydantic_table.sqlalchemy.base import BaseMeta
 from pydantic_table.table_model.field import ColumnField
 from pydantic_table.table_model.model import TableModel
 
@@ -33,3 +37,12 @@ def test_sa2pt():
     logg.debug(column_info.annotation)
     logg.debug(column_info.get_type())
     logg.debug(column_info.nullable)
+
+
+def test_sqlbase():
+    class Base(DeclarativeBase):
+        pass
+    class ExampleTableBase(Base, metaclass=BaseMeta, model=ExampleTable):
+        pass
+
+    logg.debug(ExampleTableBase)
