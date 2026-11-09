@@ -2,10 +2,15 @@ from types import UnionType
 from typing import Any, Union, Unpack, get_args, get_origin
 
 from pydantic import Field
-from pydantic.fields import _FieldInfoInputs, FieldInfo
+from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
-# from pydantic.fields import _FieldInfoInputs,  _FieldInfoAsDict
+try:
+    # python3.14
+    from pydantic.fields import _FieldInfoInputs
+except ImportError:
+    # python 3.12
+    from pydantic.fields import _FromFieldInfoInputs as _FieldInfoInputs
 
 
 class ColumnFieldInfo(FieldInfo):  # type: ignore[misc]

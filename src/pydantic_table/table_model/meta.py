@@ -1,4 +1,8 @@
-import annotationlib
+import sys
+
+if sys.version_info >= (3, 14):
+    import annotationlib
+
 from typing import Any, Type, dataclass_transform
 
 from pydantic import Field
@@ -41,13 +45,14 @@ class TableMeta(ModelMetaclass):
         table_name: str = "",
         **kwds: Any,
     ):
-        # python3.14 bugfix: do not set namespace annotations default to empty dict
-        # produces a bug in python3.14 due to PEP 649 - Deferred Evaluation Of Annotations Using Descriptors
-        if "__annotations__" not in namespace:
-            annotate = namespace.get("__annotate_func__")
+        if sys.version_info >= (3, 14):
+            # python3.14 bugfix: do not set namespace annotations default to empty dict
+            # produces a bug in python3.14 due to PEP 649 - Deferred Evaluation Of Annotations Using Descriptors
+            if "__annotations__" not in namespace:
+                annotate = namespace.get("__annotate_func__")
 
-            if annotate is not None:
-                namespace["__annotations__"] = annotate(annotationlib.Format.VALUE)
+                if annotate is not None:
+                    namespace["__annotations__"] = annotate(annotationlib.Format.VALUE)
 
         # TODO: figure out if better to use private attributes and how
         #  cls.__dict__.keys()
