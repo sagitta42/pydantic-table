@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.orm import DeclarativeBase
@@ -16,6 +17,7 @@ class ExampleTable(TableModel, table_name="examples"):
     id: int = ColumnField(description="ID", primary_key=True)
     name: str = ColumnField(description="Name")
     value: Optional[float] = ColumnField(description="Nullable value")
+    mydatetime: datetime = ColumnField(description="Date column")
 
 
 class ExampleTableBase(Base, metaclass=BaseMeta, model=ExampleTable):
