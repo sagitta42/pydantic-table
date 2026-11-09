@@ -1,21 +1,10 @@
-import enum
 from typing import Any, Type
 
-from sqlalchemy import Float, Integer, String
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm.decl_api import DeclarativeAttributeIntercept
 
+from pydantic_table.sqlalchemy.column import SaColumnType
 from pydantic_table.table_model.model import TableModel
-
-
-class BaseFieldType(enum.Enum):
-    int = Integer()
-    float = Float(32)
-    str = String(255)
-
-    @classmethod
-    def from_type(cls, type: type):
-        return cls[type.__name__].value
 
 
 class BaseMeta(DeclarativeAttributeIntercept):
@@ -47,7 +36,7 @@ class BaseMeta(DeclarativeAttributeIntercept):
                 )
 
             namespace[column_name] = mapped_column(
-                BaseFieldType.from_type(column_info.get_type()),
+                SaColumnType.from_type(column_info.get_type()),
                 nullable=column_info.nullable,
                 primary_key=column_info.primary_key,
             )

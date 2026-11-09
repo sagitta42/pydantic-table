@@ -71,7 +71,11 @@ True
   - **adaptor** for `DeclarativeBase` from `sqlalchemy` via **BaseMeta** in `pydantic_table.sqlalchemy` - see [sqlalchemy](#sqlalchemy) section
 
     ```python
-    class ExampleTableBase(Base, metaclass=BaseMeta, model=ExampleTable)
+    class Base(DeclarativeBase):
+        pass
+
+    class ExampleTableBase(Base, metaclass=BaseMeta, model=ExampleTable):
+        pass
     ```
 
 - **Schema changes** easily tracked
