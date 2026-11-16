@@ -133,9 +133,9 @@ def add_column(
     logg.debug(
         f"default={column_info.default} default factory={column_info.default_factory} required={column_info.is_required()}"
     )
+    data_list = data if isinstance(data, list) else [data]
     # is required = neither default nor default factory are defined
     if not column_info.nullable and column_info.is_required():
-        data_list = data if isinstance(data, list) else [data]
         if len(data_list) == 0:
             raise PydanticTableAlembicException(
                 f"Column {name} in {table.table_info()} is not nullable and no default was given. You provided no data."
@@ -147,12 +147,15 @@ def add_column(
             header=True,
         )
 
-        logg.info("...adding (nullable) column")
+        logg.info("...setting column to nullable=true temporarily")
         sa_column.nullable = True
         # op.alter_column(table.table_name(), name, nullable=False) - error
-        with op.batch_alter_table(table.table_name()) as batch_op:
-            batch_op.add_column(sa_column)
 
+    logg.info("...adding column")
+    with op.batch_alter_table(table.table_name()) as batch_op:
+        batch_op.add_column(sa_column)     
+
+    if len(data_list) > 0:
         logg.info("...adding data")
         condition_cols = (
             data_list[0].primary_keys() or data_list[0].column_fields().keys()
@@ -167,18 +170,13 @@ def add_column(
 
             update_where(table, values={name: row_data.pop(name)}, **condition_data)
 
-        logg.info("...changing column to nullable=false")
+    if not column_info.nullable and column_info.is_required():
+        logg.info("...changing column back to nullable=false")
         with op.batch_alter_table(table.table_name()) as batch_op:
             batch_op.alter_column(name, nullable=False, existing_type=sa_column.type)
 
-        return
 
-    with op.batch_alter_table(table.table_name()) as batch_op:
-        batch_op.add_column(
-            sap.Column(
-                name, column_info, foreign_key=foreign_key, dialect=conn.dialect.name
-            )
-        )
+
 
 
 def drop_column(table: Type[TableModel], name: str):
