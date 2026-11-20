@@ -175,6 +175,9 @@ class TableModel(BaseModel, metaclass=TableMeta):
         columns = cls.column_fields()
 
         for column_name in data:
+            if column_name in InternalAttr:
+                continue
+            
             if not column_name in columns:
                 logg.debug(f"- extra column '{column_name}' not in table")
                 ret[InternalAttr.extra][column_name] = ret.pop(column_name)
